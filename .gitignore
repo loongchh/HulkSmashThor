@@ -1,0 +1,12 @@
+*.pyc
+tmp/*
+old/*
+checkpoints*/*
+logs/*
+data/*.h5
+data/*.hdf5
+data/*.json
+unity/*
+visualization
+results
+.DS_Store
