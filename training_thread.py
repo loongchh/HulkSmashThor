@@ -237,7 +237,6 @@ class A3CTrainingThread(object):
       batch_R.reverse()
       batch_t.reverse()
 
-      print(start_lstm_state[0].shape)
       sess.run(self.accum_gradients,
                feed_dict={
                    self.local_network.s: batch_si,

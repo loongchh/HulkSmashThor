@@ -355,7 +355,6 @@ class ActorCriticLSTMNetwork(ActorCriticNetwork):
             self.W_lstm[key] = tf.get_variable("basic_lstm_cell/weights")
             self.b_lstm[key] = tf.get_variable("basic_lstm_cell/biases")
             self.reset_state()
-
   def reset_state(self):
     self.lstm_state_out = tf.contrib.rnn.LSTMStateTuple(np.zeros([1, 512]),
                                                         np.zeros([1, 512]))
@@ -387,7 +386,7 @@ class ActorCriticLSTMNetwork(ActorCriticNetwork):
     # so we don't update LSTM state here.
     prev_lstm_state_out = self.lstm_state_out
     k = self._get_key(scopes[:2])
-    v_out, _ = sess.run([self.pi[k], self.lstm_state[k]],
+    v_out, _ = sess.run([self.v[k], self.lstm_state[k]],
                         feed_dict={self.s: [state],
                                    self.t: [target],
                                    self.initial_lstm_state0: self.lstm_state_out[0],
