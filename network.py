@@ -276,7 +276,7 @@ class ActorCriticLSTMNetwork(ActorCriticNetwork):
       self.t = tf.placeholder("float", [None, 2048, 4], name="t_placeholder")
 
       # place holder for LSTM unrolling time step size.
-      self.step_size = tf.placeholder(tf.float32, [1], name="step_size_placeholder")
+      # self.step_size = tf.placeholder(tf.float32, [1], name="step_size_placeholder")
 
       self.initial_lstm_state0 = tf.placeholder(tf.float32, [1, 512], name="initial_lstm_state0_placeholder")
       self.initial_lstm_state1 = tf.placeholder(tf.float32, [1, 512], name="initial_lstm_state1_placeholder")
@@ -328,7 +328,7 @@ class ActorCriticLSTMNetwork(ActorCriticNetwork):
             lstm_outputs, self.lstm_state[key] = tf.nn.dynamic_rnn(self.lstm[key],
                                                                    h_fc3_reshaped,
                                                                    initial_state=self.initial_lstm_state,
-                                                                   sequence_length=self.step_size,
+                                                                  #  sequence_length=self.step_size,
                                                                    time_major=False,
                                                                    scope=scope)
 
@@ -366,8 +366,8 @@ class ActorCriticLSTMNetwork(ActorCriticNetwork):
                                                   feed_dict={self.s: [state],
                                                              self.t: [target],
                                                              self.initial_lstm_state0: self.lstm_state_out[0],
-                                                             self.initial_lstm_state1: self.lstm_state_out[1],
-                                                             self.step_size: [1]})
+                                                             self.initial_lstm_state1: self.lstm_state_out[1],})
+                                                            #  self.step_size: [1]
     return (pi_out[0], v_out[0])
 
   def run_policy(self, sess, state, target, scopes):
@@ -376,8 +376,8 @@ class ActorCriticLSTMNetwork(ActorCriticNetwork):
                                            feed_dict={self.s: [state],
                                                       self.t: [target],
                                                       self.initial_lstm_state0: self.lstm_state_out[0],
-                                                      self.initial_lstm_state1: self.lstm_state_out[1],
-                                                      self.step_size: [1]})
+                                                      self.initial_lstm_state1: self.lstm_state_out[1],})
+                                                      # self.step_size: [1]
     return pi_out[0]
 
   def run_value(self, sess, state, target, scopes):
@@ -391,8 +391,8 @@ class ActorCriticLSTMNetwork(ActorCriticNetwork):
                         feed_dict={self.s: [state],
                                    self.t: [target],
                                    self.initial_lstm_state0: self.lstm_state_out[0],
-                                   self.initial_lstm_state1: self.lstm_state_out[1],
-                                   self.step_size: [1]})
+                                   self.initial_lstm_state1: self.lstm_state_out[1],})
+                                  #  self.step_size: [1]
     self.lstm_state_out = prev_lstm_state_out
     return v_out[0]
 

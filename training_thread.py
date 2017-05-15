@@ -245,8 +245,8 @@ class A3CTrainingThread(object):
                    self.local_network.t: batch_t,
                    self.local_network.td: batch_td,
                    self.local_network.r: batch_R,
-                   self.local_network.initial_lstm_state: start_lstm_state,
-                   self.local_network.step_size: [len(batch_a)]})
+                   self.local_network.initial_lstm_state: start_lstm_state,})
+                  #  self.local_network.step_size: [len(batch_a)]
     else:
       sess.run( self.accum_gradients,
                 feed_dict = {
