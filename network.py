@@ -262,6 +262,8 @@ class ActorCriticLSTMNetwork(ActorCriticNetwork):
     self.b_value = dict()
 
     self.lstm = dict()
+    self.lstm_state = dict()
+
     self.W_lstm = dict()
     self.b_lstm = dict()
 
@@ -272,6 +274,14 @@ class ActorCriticLSTMNetwork(ActorCriticNetwork):
 
       # target (input)
       self.t = tf.placeholder("float", [None, 2048, 4], name="t_placeholder")
+
+      # place holder for LSTM unrolling time step size.
+      self.step_size = tf.placeholder(tf.float32, [1], name="step_size_placeholder")
+
+      self.initial_lstm_state0 = tf.placeholder(tf.float32, [1, 512], name="initial_lstm_state0_placeholder")
+      self.initial_lstm_state1 = tf.placeholder(tf.float32, [1, 512], name="initial_lstm_state1_placeholder")
+      self.initial_lstm_state = tf.contrib.rnn.LSTMStateTuple(self.initial_lstm_state0,
+                                                              self.initial_lstm_state1)
 
       with tf.variable_scope(network_scope):
         # network key
@@ -309,14 +319,6 @@ class ActorCriticLSTMNetwork(ActorCriticNetwork):
 
             # lstm
             self.lstm[key] = tf.contrib.rnn.BasicLSTMCell(512)
-
-            # place holder for LSTM unrolling time step size.
-            self.step_size = tf.placeholder(tf.float32, [1], name="step_size_placeholder")
-
-            self.initial_lstm_state0 = tf.placeholder(tf.float32, [1, 512], name="initial_lstm_state0_placeholder")
-            self.initial_lstm_state1 = tf.placeholder(tf.float32, [1, 512], name="initial_lstm_state1_placeholder")
-            self.initial_lstm_state = tf.contrib.rnn.LSTMStateTuple(self.initial_lstm_state0,
-                                                                    self.initial_lstm_state1)
 
             # Unrolling LSTM up to LOCAL_T_MAX time steps. (= 5time steps.)
             # When episode terminates unrolling time steps becomes less than LOCAL_TIME_STEP.
