@@ -262,8 +262,6 @@ class ActorCriticLSTMNetwork(ActorCriticNetwork):
     self.b_value = dict()
 
     self.lstm = dict()
-    self.lstm_state = dict()
-
     self.W_lstm = dict()
     self.b_lstm = dict()
 

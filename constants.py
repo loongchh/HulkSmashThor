@@ -17,7 +17,7 @@ ENTROPY_BETA = 0.01 # entropy regurarlization constant
 MAX_TIME_STEP = 10.0 * 10**6 # 10 million frames
 GRAD_NORM_CLIP = 40.0 # gradient norm clipping
 USE_GPU = True # To use GPU, set True
-USE_LSTM = False
+USE_LSTM = True
 VERBOSE = True
 
 SCREEN_WIDTH = 84
