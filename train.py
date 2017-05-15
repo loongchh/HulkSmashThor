@@ -8,7 +8,7 @@ import signal
 import random
 import os
 
-from network import ActorCriticFFNetwork
+from network import ActorCriticFFNetwork, ActorCriticLSTMNetwork
 from training_thread import A3CTrainingThread
 
 from utils.ops import log_uniform
@@ -26,6 +26,7 @@ from constants import RMSP_EPSILON
 from constants import RMSP_ALPHA
 from constants import GRAD_NORM_CLIP
 from constants import USE_GPU
+from constants import USE_LSTM
 from constants import TASK_TYPE
 from constants import TASK_LIST
 
@@ -45,10 +46,16 @@ if __name__ == '__main__':
                                       INITIAL_ALPHA_HIGH,
                                       INITIAL_ALPHA_LOG_RATE)
 
-  global_network = ActorCriticFFNetwork(action_size = ACTION_SIZE,
-                                        device = device,
-                                        network_scope = network_scope,
-                                        scene_scopes = scene_scopes)
+  if USE_LSTM:
+    global_network = ActorCriticLSTMNetwork(action_size=ACTION_SIZE,
+                                            device=device,
+                                            network_scope=network_scope,
+                                            scene_scopes=scene_scopes)
+  else:
+    global_network = ActorCriticFFNetwork(action_size = ACTION_SIZE,
+                                          device = device,
+                                          network_scope = network_scope,
+                                          scene_scopes = scene_scopes)
 
   branches = []
   for scene in scene_scopes:

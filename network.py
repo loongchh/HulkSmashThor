@@ -20,10 +20,10 @@ class ActorCriticNetwork(object):
 
     with tf.device(self._device):
       # taken action (input for policy)
-      self.a = tf.placeholder("float", [None, self._action_size])
-    
+      self.a = tf.placeholder("float", [None, self._action_size], name="a_placeholder")
+
       # temporary difference (R-V) (input for policy)
-      self.td = tf.placeholder("float", [None])
+      self.td = tf.placeholder("float", [None], name="tf_placeholder")
 
       # avoid NaN with clipping when value in pi becomes zero
       log_pi = tf.log(tf.clip_by_value(self.pi[scope_key], 1e-20, 1.0))
@@ -35,7 +35,7 @@ class ActorCriticNetwork(object):
       policy_loss = - tf.reduce_sum(tf.reduce_sum(tf.multiply(log_pi, self.a), axis=1) * self.td + entropy * entropy_beta)
 
       # R (input for value)
-      self.r = tf.placeholder("float", [None])
+      self.r = tf.placeholder("float", [None], name="r_placeholder")
 
       # value loss (output)
       # learning rate for critic is half of actor's
@@ -149,10 +149,10 @@ class ActorCriticFFNetwork(ActorCriticNetwork):
     with tf.device(self._device):
 
       # state (input)
-      self.s = tf.placeholder("float", [None, 2048, 4])
+      self.s = tf.placeholder("float", [None, 2048, 4], name="s_placeholder")
 
       # target (input)
-      self.t = tf.placeholder("float", [None, 2048, 4])
+      self.t = tf.placeholder("float", [None, 2048, 4], name="t_placeholder")
 
       with tf.variable_scope(network_scope):
         # network key
@@ -222,6 +222,186 @@ class ActorCriticFFNetwork(ActorCriticNetwork):
       self.W_fc1, self.b_fc1,
       self.W_fc2, self.b_fc2,
       self.W_fc3, self.b_fc3,
+      self.W_policy, self.b_policy,
+      self.W_value, self.b_value
+    ]
+    vs = []
+    for v in var_list:
+      vs.extend(v.values())
+    return vs
+
+# Actor-Critic LSTM Network
+class ActorCriticLSTMNetwork(ActorCriticNetwork):
+  """
+    Implementation of the target-driven deep siamese actor-critic network from [Zhu et al., ICRA 2017]
+    We use tf.variable_scope() to define domains for parameter sharing
+  """
+  def __init__(self,
+               action_size,
+               device="/cpu:0",
+               network_scope="network",
+               scene_scopes=["scene"]):
+    ActorCriticNetwork.__init__(self, action_size, device)
+
+    self.pi = dict()
+    self.v = dict()
+
+    self.W_fc1 = dict()
+    self.b_fc1 = dict()
+
+    self.W_fc2 = dict()
+    self.b_fc2 = dict()
+
+    self.W_fc3 = dict()
+    self.b_fc3 = dict()
+
+    self.W_policy = dict()
+    self.b_policy = dict()
+
+    self.W_value = dict()
+    self.b_value = dict()
+
+    self.lstm = dict()
+    self.lstm_state = dict()
+
+    self.W_lstm = dict()
+    self.b_lstm = dict()
+
+    with tf.device(self._device):
+
+      # state (input)
+      self.s = tf.placeholder("float", [None, 2048, 4], name="s_placeholder")
+
+      # target (input)
+      self.t = tf.placeholder("float", [None, 2048, 4], name="t_placeholder")
+
+      with tf.variable_scope(network_scope):
+        # network key
+        key = network_scope
+
+        # flatten input
+        self.s_flat = tf.reshape(self.s, [-1, 8192])
+        self.t_flat = tf.reshape(self.t, [-1, 8192])
+
+        # shared siamese layer
+        self.W_fc1[key] = self._fc_weight_variable([8192, 512])
+        self.b_fc1[key] = self._fc_bias_variable([512], 8192)
+
+        h_s_flat = tf.nn.relu(tf.matmul(self.s_flat, self.W_fc1[key]) + self.b_fc1[key])
+        h_t_flat = tf.nn.relu(tf.matmul(self.t_flat, self.W_fc1[key]) + self.b_fc1[key])
+        h_fc1 = tf.concat(values=[h_s_flat, h_t_flat], axis=1)
+
+        # shared fusion layer
+        self.W_fc2[key] = self._fc_weight_variable([1024, 512])
+        self.b_fc2[key] = self._fc_bias_variable([512], 1024)
+        h_fc2 = tf.nn.relu(tf.matmul(h_fc1, self.W_fc2[key]) + self.b_fc2[key])
+
+        for scene_scope in scene_scopes:
+          # scene-specific key
+          key = self._get_key([network_scope, scene_scope])
+
+          with tf.variable_scope(scene_scope) as scope:
+
+            # scene-specific adaptation layer
+            self.W_fc3[key] = self._fc_weight_variable([512, 512])
+            self.b_fc3[key] = self._fc_bias_variable([512], 512)
+            h_fc3 = tf.nn.relu(tf.matmul(h_fc2, self.W_fc3[key]) + self.b_fc3[key])
+
+            h_fc3_reshaped = tf.reshape(h_fc3, [1, -1, 512])
+
+            # lstm
+            self.lstm[key] = tf.contrib.rnn.BasicLSTMCell(512)
+
+            # place holder for LSTM unrolling time step size.
+            self.step_size = tf.placeholder(tf.float32, [1], name="step_size_placeholder")
+
+            self.initial_lstm_state0 = tf.placeholder(tf.float32, [1, 512], name="initial_lstm_state0_placeholder")
+            self.initial_lstm_state1 = tf.placeholder(tf.float32, [1, 512], name="initial_lstm_state1_placeholder")
+            self.initial_lstm_state = tf.contrib.rnn.LSTMStateTuple(self.initial_lstm_state0,
+                                                                    self.initial_lstm_state1)
+
+            # Unrolling LSTM up to LOCAL_T_MAX time steps. (= 5time steps.)
+            # When episode terminates unrolling time steps becomes less than LOCAL_TIME_STEP.
+            # Unrolling step size is applied via self.step_size placeholder.
+            # When forward propagating, step_size is 1.
+            # (time_major = False, so output shape is [batch_size, max_time, cell.output_size])
+            lstm_outputs, self.lstm_state[key] = tf.nn.dynamic_rnn(self.lstm[key],
+                                                                   h_fc3_reshaped,
+                                                                   initial_state=self.initial_lstm_state,
+                                                                   sequence_length=self.step_size,
+                                                                   time_major=False,
+                                                                   scope=scope)
+
+            # lstm_outputs: (1,5,512) for back prop, (1,1,512) for forward prop.
+            lstm_outputs = tf.reshape(lstm_outputs, [-1, 512])
+
+            # weight for policy output layer
+            self.W_policy[key] = self._fc_weight_variable([512, action_size])
+            self.b_policy[key] = self._fc_bias_variable([action_size], 512)
+
+            # policy (output)
+            pi_ = tf.matmul(lstm_outputs, self.W_policy[key]) + self.b_policy[key]
+            self.pi[key] = tf.nn.softmax(pi_)
+
+            # weight for value output layer
+            self.W_value[key] = self._fc_weight_variable([512, 1])
+            self.b_value[key] = self._fc_bias_variable([1], 512)
+
+            # value (output)
+            v_ = tf.matmul(h_fc3, self.W_value[key]) + self.b_value[key]
+            self.v[key] = tf.reshape(v_, [-1])
+
+            scope.reuse_variables()
+            self.W_lstm[key] = tf.get_variable("basic_lstm_cell/weights")
+            self.b_lstm[key] = tf.get_variable("basic_lstm_cell/biases")
+            self.reset_state()
+
+  def reset_state(self):
+    self.lstm_state_out = tf.contrib.rnn.LSTMStateTuple(np.zeros([1, 512]),
+                                                        np.zeros([1, 512]))
+
+  def run_policy_and_value(self, sess, state, target, scopes):
+    k = self._get_key(scopes[:2])
+    pi_out, v_out, self.lstm_state_out = sess.run([self.pi[k], self.v[k], self.lstm_state[k]],
+                                                  feed_dict={self.s: [state],
+                                                             self.t: [target],
+                                                             self.initial_lstm_state0: self.lstm_state_out[0],
+                                                             self.initial_lstm_state1: self.lstm_state_out[1],
+                                                             self.step_size: [1]})
+    return (pi_out[0], v_out[0])
+
+  def run_policy(self, sess, state, target, scopes):
+    k = self._get_key(scopes[:2])
+    pi_out, self.lstm_state_out = sess.run([self.pi[k], self.lstm_state[k]],
+                                           feed_dict={self.s: [state],
+                                                      self.t: [target],
+                                                      self.initial_lstm_state0: self.lstm_state_out[0],
+                                                      self.initial_lstm_state1: self.lstm_state_out[1],
+                                                      self.step_size: [1]})
+    return pi_out[0]
+
+  def run_value(self, sess, state, target, scopes):
+    # This run_value() is used for calculating V for bootstrapping at the
+    # end of LOCAL_T_MAX time step sequence.
+    # When next sequcen starts, V will be calculated again with the same state using updated network weights,
+    # so we don't update LSTM state here.
+    prev_lstm_state_out = self.lstm_state_out
+    k = self._get_key(scopes[:2])
+    v_out, _ = sess.run([self.pi[k], self.lstm_state[k]],
+                        feed_dict={self.s: [state],
+                                   self.t: [target],
+                                   self.initial_lstm_state0: self.lstm_state_out[0],
+                                   self.initial_lstm_state1: self.lstm_state_out[1],
+                                   self.step_size: [1]})
+    self.lstm_state_out = prev_lstm_state_out
+    return v_out[0]
+
+  def get_vars(self):
+    var_list = [
+      self.W_fc1, self.b_fc1,
+      self.W_fc2, self.b_fc2,
+      self.W_fc3, self.b_fc3,
+      self.W_lstm, self.b_lstm,
       self.W_policy, self.b_policy,
       self.W_value, self.b_value
     ]

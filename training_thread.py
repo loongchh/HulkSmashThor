@@ -7,12 +7,13 @@ import sys
 
 from utils.accum_trainer import AccumTrainer
 from scene_loader import THORDiscreteEnvironment as Environment
-from network import ActorCriticFFNetwork
+from network import ActorCriticFFNetwork, ActorCriticLSTMNetwork
 
 from constants import ACTION_SIZE
 from constants import GAMMA
 from constants import LOCAL_T_MAX
 from constants import ENTROPY_BETA
+from constants import USE_LSTM
 from constants import VERBOSE
 
 class A3CTrainingThread(object):
@@ -37,11 +38,18 @@ class A3CTrainingThread(object):
     self.task_scope = task_scope
     self.scopes = [network_scope, scene_scope, task_scope]
 
-    self.local_network = ActorCriticFFNetwork(
-                           action_size=ACTION_SIZE,
-                           device=device,
-                           network_scope=network_scope,
-                           scene_scopes=[scene_scope])
+    if USE_LSTM:
+      self.local_network = ActorCriticLSTMNetwork(
+          action_size=ACTION_SIZE,
+          device=device,
+          network_scope=network_scope,
+          scene_scopes=[scene_scope])
+    else:
+      self.local_network = ActorCriticFFNetwork(
+                            action_size=ACTION_SIZE,
+                            device=device,
+                            network_scope=network_scope,
+                            scene_scopes=[scene_scope])
 
     self.local_network.prepare_loss(ENTROPY_BETA, self.scopes)
 
@@ -133,6 +141,9 @@ class A3CTrainingThread(object):
 
     start_local_t = self.local_t
 
+    if USE_LSTM:
+      start_lstm_state = self.local_network.lstm_state_out
+
     # t_max times loop
     for i in range(LOCAL_T_MAX):
       pi_, value_ = self.local_network.run_policy_and_value(sess, self.env.s_t, self.env.target, self.scopes)
@@ -168,7 +179,7 @@ class A3CTrainingThread(object):
 
       # s_t1 -> s_t
       self.env.update()
-      
+
       if terminal:
         terminal_end = True
         sys.stdout.write("time %d | thread #%d | scene %s | target #%s\n%s %s episode reward = %.3f\n%s %s episode length = %d\n%s %s episode max Q  = %.3f\n" % (global_t, self.thread_index, self.scene_scope, self.task_scope, self.scene_scope, self.task_scope, self.episode_reward, self.scene_scope, self.task_scope, self.episode_length, self.scene_scope, self.task_scope, self.episode_max_q))
@@ -186,6 +197,8 @@ class A3CTrainingThread(object):
         self.episode_length = 0
         self.episode_max_q = -np.inf
         self.env.reset()
+        if USE_LSTM:
+          self.local_network.reset_state()
 
         break
 
@@ -217,13 +230,30 @@ class A3CTrainingThread(object):
       batch_R.append(R)
       batch_t.append(ti)
 
-    sess.run( self.accum_gradients,
-              feed_dict = {
-                self.local_network.s: batch_si,
-                self.local_network.a: batch_a,
-                self.local_network.t: batch_t,
-                self.local_network.td: batch_td,
-                self.local_network.r: batch_R} )
+    if USE_LSTM:
+      batch_si.reverse()
+      batch_a.reverse()
+      batch_td.reverse()
+      batch_R.reverse()
+      batch_t.reverse()
+
+      sess.run(self.accum_gradients,
+               feed_dict={
+                   self.local_network.s: batch_si,
+                   self.local_network.a: batch_a,
+                   self.local_network.t: batch_t,
+                   self.local_network.td: batch_td,
+                   self.local_network.r: batch_R,
+                   self.local_network.initial_lstm_state: start_lstm_state,
+                   self.local_network.step_size: [len(batch_a)]})
+    else:
+      sess.run( self.accum_gradients,
+                feed_dict = {
+                  self.local_network.s: batch_si,
+                  self.local_network.a: batch_a,
+                  self.local_network.t: batch_t,
+                  self.local_network.td: batch_td,
+                  self.local_network.r: batch_R} )
 
     cur_learning_rate = self._anneal_learning_rate(global_t)
 
