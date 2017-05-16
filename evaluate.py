@@ -4,6 +4,7 @@ import tensorflow as tf
 import numpy as np
 import random
 import sys
+import argparse
 
 from network import ActorCriticFFNetwork
 from training_thread import A3CTrainingThread
@@ -20,6 +21,10 @@ from constants import TASK_TYPE
 from constants import TASK_LIST
 
 if __name__ == '__main__':
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--time', help='Name of checkpoint file.',
+                      default=None)
+  args = parser.parse_args()
 
   device = "/cpu:0" # use CPU for display tool
   network_scope = TASK_TYPE
@@ -39,8 +44,12 @@ if __name__ == '__main__':
   checkpoint = tf.train.get_checkpoint_state(CHECKPOINT_DIR)
 
   if checkpoint and checkpoint.model_checkpoint_path:
-    saver.restore(sess, checkpoint.model_checkpoint_path)
-    print("checkpoint loaded: {}".format(checkpoint.model_checkpoint_path))
+    if args.time:
+      checkpoint_path = "checkpoints/checkpoint-" + args.time
+    else:
+      checkpoint_path = checkpoint.model_checkpoint_path
+    saver.restore(sess, checkpoint_path)
+    print("checkpoint loaded: {}".format(checkpoint_path))
   else:
     print("Could not find old checkpoint")
 
