@@ -110,7 +110,7 @@ class A3CTrainingThread(object):
     for k in placeholders:
       feed_dict[placeholders[k]] = values[k]
     summary_str = sess.run(summary_op, feed_dict=feed_dict)
-    if VERBOSE: sys.stdout.write('writing to summary writer at time %d\n' % (global_t))
+    if VERBOSE: print('writing to summary writer at time %d\n' % (global_t))
     writer.add_summary(summary_str, global_t)
     # writer.flush()
 
