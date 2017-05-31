@@ -3,7 +3,6 @@ import sys
 import h5py
 import json
 import numpy as np
-import networkx as nx
 import random
 import skimage.io
 from skimage.transform import resize
@@ -11,7 +10,6 @@ from constants import ACTION_SIZE
 from constants import SCREEN_WIDTH
 from constants import SCREEN_HEIGHT
 from constants import HISTORY_LENGTH
-
 
 class THORDiscreteEnvironment(object):
 
@@ -47,7 +45,6 @@ class THORDiscreteEnvironment(object):
     self.s_t1     = np.zeros_like(self.s_t)
     self.s_target = self._tiled_state(self.terminal_state_id)
 
-    self.shortest_path()
     self.reset()
 
   # public methods
@@ -112,7 +109,7 @@ class THORDiscreteEnvironment(object):
   @property
   def action_size(self):
     # move forward/backward, turn left/right for navigation
-    return ACTION_SIZE
+    return ACTION_SIZE 
 
   @property
   def action_definitions(self):
@@ -144,32 +141,6 @@ class THORDiscreteEnvironment(object):
   @property
   def r(self):
     return self.rotations[self.current_state_id]
-
-  def shortest_path(self):
-    s_next_s_action = {}
-    G = nx.DiGraph()
-
-    for s in range(self.n_locations):
-      for a in range(ACTION_SIZE):
-        next_s = self.transition_graph[s, a]
-        if next_s >= 0:
-          s_next_s_action[(s, next_s)] = a
-          G.add_edge(s, next_s)
-
-    best_action = np.zeros((self.n_locations, 4), dtype=np.int)
-    for i in range(self.n_locations):
-      if i == self.terminal_state_id:
-        continue
-      if self.shortest_path_distances[i, self.terminal_state_id] == -1:
-        continue
-      for path in nx.all_shortest_paths(G, source=i, target=self.terminal_state_id):
-        action = s_next_s_action[(i, path[1])]
-        best_action[i, action] += 1
-
-    action_sum = best_action.sum(axis=1, keepdims=True)
-    action_sum[action_sum == 0] = 1
-    self.shortest_path_action = best_action / action_sum
-
 
 if __name__ == "__main__":
   scene_name = 'bedroom_04'
