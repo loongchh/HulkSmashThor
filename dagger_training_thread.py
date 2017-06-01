@@ -24,7 +24,7 @@ class SmashNetTrainingThread(object):
                network_scope="network",
                scene_scope="scene",
                task_scope="task"):
-    
+
     self.thread_index = thread_index
     self.learning_rate_input = learning_rate_input
     self.max_global_time_step = max_global_time_step
@@ -39,7 +39,7 @@ class SmashNetTrainingThread(object):
                            device=device,
                            network_scope=network_scope,
                            scene_scopes=[scene_scope])
-    
+
     self.local_network.prepare_loss(self.scopes)
 
     self.trainer = AccumTrainer(device)
@@ -65,12 +65,12 @@ class SmashNetTrainingThread(object):
     self.episode_reward = 0
     self.episode_length = 0
     self.episode_max_q = -np.inf
-    
+
     self.initial_diffidence_rate_seed = initial_diffidence_rate_seed
-        
+
     self.oracle = None
-    
-    
+
+
   def _local_var_name(self, var):
     return '/'.join(var.name.split('/')[1:])
 
@@ -80,12 +80,12 @@ class SmashNetTrainingThread(object):
   def _anneal_rate(self, init_rate, global_time_step):
     time_step_to_go = max(self.max_global_time_step - global_time_step, 0.0)
     rate = init_rate * time_step_to_go / self.max_global_time_step
-    return rate 
+    return rate
 
   def _anneal_learning_rate(self, global_time_step):
     learning_rate = self._anneal_rate(self.initial_learning_rate, global_time_step)
     return learning_rate
-  
+
   def _inverse_sigmoid_decay_rate(self, init_rate_seed, global_time_step):
       rate = init_rate_seed*np.exp(-global_time_step/init_rate_seed)
       rate = rate / (1. + rate)
@@ -97,16 +97,16 @@ class SmashNetTrainingThread(object):
 
   # TODO: check
   def choose_action(self, smashnet_pi_values, oracle_pi_values, confidence_rate):
-    
+
     r = random.random()
     if r < confidence_rate: pi_values = oracle_pi_values
     else: pi_values = smashnet_pi_values
-        
+
     r = random.random() * np.sum(pi_values)
     values = np.cumsum(pi_values)
-    for i in range(len(values)): 
+    for i in range(len(values)):
         if values[i] >= r: return i
-    
+
   def _record_score(self, sess, writer, summary_op, placeholders, values, global_t):
     feed_dict = {}
     for k in placeholders:
@@ -131,7 +131,7 @@ class SmashNetTrainingThread(object):
     states = []
     targets = []
     oracle_pis = []
-    
+
     terminal_end = False
 
     # reset accumulated gradients
@@ -144,10 +144,10 @@ class SmashNetTrainingThread(object):
 
     # t_max times loop (5 steps)
     for i in range(LOCAL_T_MAX):
-        
+
       smashnet_pi = self.local_network.run_policy(sess, self.env.s_t, self.env.target, self.scopes)
       oracle_pi = self.oracle.run_policy(self.env.current_state_id)
-      
+
       diffidence_rate = self._anneal_diffidence_rate(global_t)
       action = self.choose_action(smashnet_pi, oracle_pi, diffidence_rate)
 
@@ -155,8 +155,8 @@ class SmashNetTrainingThread(object):
       targets.append(self.env.target)
       oracle_pis.append(oracle_pi)
 
-      if VERBOSE and (self.thread_index == 0) and (self.local_t % 100) == 0:
-         print("SmashNet Pi = %s, Oracle Pi = %s\n" % (smashnet_pi, oracle_pi))
+      if VERBOSE and (self.local_t % 1000) == 0:
+         sys.stdout.write("SmashNet Pi = {}, Oracle Pi = {}\n".format(["{:0.2f}".format(i) for i in smashnet_pi], ["{:0.2f}".format(i) for i in oracle_pi]))
 
       self.env.step(action)
 
@@ -168,10 +168,10 @@ class SmashNetTrainingThread(object):
 
       # s_t1 -> s_t
       self.env.update()
-      
+
       if is_terminal:
         terminal_end = True
-        sys.stdout.write("time %d | thread #%d | scene %s | target %s | episode length = %d\n" % (global_t, self.thread_index, self.scene_scope, self.task_scope, self.episode_length))
+        # sys.stdout.write("time %d | thread #%d | scene %s | target %s | episode length = %d\n" % (global_t, self.thread_index, self.scene_scope, self.task_scope, self.episode_length))
 
         self.episode_length = 0
         self.env.reset()
@@ -180,14 +180,14 @@ class SmashNetTrainingThread(object):
 
     states.reverse()
     oracle_pis.reverse()
-    
+
     batch_si = []
     batch_ti = []
     batch_opi = []
 
     # compute and accmulate gradients
     for(si, ti, opi) in zip(states, targets, oracle_pis):
-        
+
       batch_si.append(si)
       batch_ti.append(ti)
       batch_opi.append(opi)
@@ -201,8 +201,8 @@ class SmashNetTrainingThread(object):
     cur_learning_rate = self._anneal_learning_rate(global_t)
     sess.run( self.apply_gradients, feed_dict = { self.learning_rate_input: cur_learning_rate } )
 
-    if VERBOSE and (self.thread_index == 0) and (self.local_t % 100) == 0:
-      sys.stdout.write("Local timestep %d\n" % self.local_t)
+    # if VERBOSE and (self.thread_index == 0) and (self.local_t % 100) == 0:
+    #   sys.stdout.write("Local timestep %d\n" % self.local_t)
 
     # return advanced local step size
     diff_local_t = self.local_t - start_local_t
