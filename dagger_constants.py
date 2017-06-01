@@ -7,6 +7,7 @@ CHECKPOINT_DIR = 'checkpoints'
 LOG_FILE = 'logs'
 INITIAL_ALPHA_LOW = 1e-4    # log_uniform low limit for learning rate
 INITIAL_ALPHA_HIGH = 1e-2   # log_uniform high limit for learning rate
+INITIAL_DIFFIDENCE_RATE = 2000
 
 ACTION_SIZE = 4 # action size
 

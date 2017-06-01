@@ -14,7 +14,7 @@ from dagger_training_thread import SmashNetTrainingThread
 from utils.ops import log_uniform
 from utils.rmsprop_applier import RMSPropApplier
 
-from dagger_constants import ACTION_SIZE, PARALLEL_SIZE, INITIAL_ALPHA_LOW, INITIAL_ALPHA_HIGH, INITIAL_ALPHA_LOG_RATE, MAX_TIME_STEP, CHECKPOINT_DIR, LOG_FILE, RMSP_EPSILON, RMSP_ALPHA, GRAD_NORM_CLIP, USE_GPU, TASK_TYPE, TASK_LIST
+from dagger_constants import ACTION_SIZE, PARALLEL_SIZE, INITIAL_ALPHA_LOW, INITIAL_ALPHA_HIGH, INITIAL_ALPHA_LOG_RATE, INITIAL_DIFFIDENCE_RATE, MAX_TIME_STEP, CHECKPOINT_DIR, LOG_FILE, RMSP_EPSILON, RMSP_ALPHA, GRAD_NORM_CLIP, USE_GPU, TASK_TYPE, TASK_LIST
 
 if __name__ == '__main__':
 
@@ -30,7 +30,7 @@ if __name__ == '__main__':
   initial_learning_rate = log_uniform(INITIAL_ALPHA_LOW,
                                       INITIAL_ALPHA_HIGH,
                                       INITIAL_ALPHA_LOG_RATE)
-  initial_diffidence_rate_seed = 2000 #TODO: hyperparam
+  initial_diffidence_rate_seed = INITIAL_DIFFIDENCE_RATE  # TODO: hyperparam
 
   global_network = SmashNet(action_size = ACTION_SIZE,
                                         device = device,
@@ -41,7 +41,7 @@ if __name__ == '__main__':
   for scene in scene_scopes:
     for task in list_of_tasks[scene]:
       branches.append((scene, task)) # single scene, task pair for now
-    
+
   print("Total navigation tasks: %d" % len(branches))
 
   NUM_TASKS = len(branches)
@@ -60,11 +60,11 @@ if __name__ == '__main__':
   training_threads = [] # 1 training thread for the single target
   for i in range(PARALLEL_SIZE):
     scene, task = branches[i%NUM_TASKS]
-    training_thread = SmashNetTrainingThread(i, 
-                                             global_network, 
+    training_thread = SmashNetTrainingThread(i,
+                                             global_network,
                                              initial_learning_rate,
                                              learning_rate_input,
-                                             grad_applier, 
+                                             grad_applier,
                                              MAX_TIME_STEP,
                                              device,
                                              initial_diffidence_rate_seed,
@@ -72,7 +72,7 @@ if __name__ == '__main__':
                                              scene_scope = scene,
                                              task_scope = task)
     training_threads.append(training_thread)
-  
+
   print("Total train threads: %d" % len(training_threads))
 
   # prepare session
@@ -130,7 +130,7 @@ if __name__ == '__main__':
 
     scene, task = branches[parallel_index % NUM_TASKS]
     key = scene + "-" + task
-    
+
     while global_t < MAX_TIME_STEP and not stop_requested:
       diff_global_t = training_thread.process(sess, global_t, summary_writer,
                                               summary_op[key], summary_placeholders[key])
