@@ -1,10 +1,7 @@
 # -*- coding: utf-8 -*-
 import tensorflow as tf
 import numpy as np
-
-# Actor-Critic Network Base Class
-# The policy network and value network architecture
-# should be implemented in a child class of this one
+import networkx as nx
 
 class PolicyGenerator(object):
     
@@ -16,12 +13,38 @@ class PolicyGenerator(object):
     
 class ShortestPathOracle(PolicyGenerator):
     
-    def __init__(self, action_size, env):
-        self.action_size = action_size
-        self.shortest_path_actions = env.shortest_path_action
+    def __init__(self, env, action_size):
+        self.shortest_path_actions = self._calculate_shortest_paths(env, action_size)
         
-    def run_policy(self, state):
-        return self.shortest_path_actions[state]
+    def _calculate_shortest_paths(self, env, action_size):
+        s_next_s_action = {}
+        G = nx.DiGraph()
+
+        for s in range(env.n_locations):
+          for a in range(action_size):
+            next_s = env.transition_graph[s, a]
+            if next_s >= 0:
+              s_next_s_action[(s, next_s)] = a
+              G.add_edge(s, next_s)
+
+        best_action = np.zeros((env.n_locations, 4), dtype=np.float)
+        for i in range(env.n_locations):
+          if i == env.terminal_state_id:
+            continue
+          if env.shortest_path_distances[i, env.terminal_state_id] == -1:
+            continue
+          for path in nx.all_shortest_paths(G, source=i, target=env.terminal_state_id):
+            action = s_next_s_action[(i, path[1])]
+            best_action[i, action] += 1
+
+        action_sum = best_action.sum(axis=1, keepdims=True)
+        action_sum[action_sum == 0] = 1
+        shortest_path_actions = best_action / action_sum
+        
+        return shortest_path_actions
+        
+    def run_policy(self, s_t_id):
+        return self.shortest_path_actions[s_t_id]
 
 # Hulk smash net to defeat THOR challenge
 class SmashNet(PolicyGenerator):
@@ -35,6 +58,7 @@ class SmashNet(PolicyGenerator):
                network_scope="network",
                scene_scopes=["scene"]):
     
+    self.action_size = action_size
     self.device = device
     
     self.pi = dict()
@@ -112,7 +136,7 @@ class SmashNet(PolicyGenerator):
     # the same scene share the same output branch
     scope_key = self._get_key(scopes[:-1]) # "thread-n/scene"
 
-    with tf.device(self._device):
+    with tf.device(self.device):
         
       # oracle policy
       self.opi = tf.placeholder("float", [None, self.action_size])

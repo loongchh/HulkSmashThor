@@ -8,7 +8,7 @@ import signal
 import random
 import os
 
-from dagger_policy_generator import SmashNet
+from dagger_policy_generators import SmashNet
 from dagger_training_thread import SmashNetTrainingThread
 
 from utils.ops import log_uniform
@@ -30,6 +30,7 @@ if __name__ == '__main__':
   initial_learning_rate = log_uniform(INITIAL_ALPHA_LOW,
                                       INITIAL_ALPHA_HIGH,
                                       INITIAL_ALPHA_LOG_RATE)
+  initial_diffidence_rate_seed = 2000 #TODO: hyperparam
 
   global_network = SmashNet(action_size = ACTION_SIZE,
                                         device = device,
@@ -40,6 +41,8 @@ if __name__ == '__main__':
   for scene in scene_scopes:
     for task in list_of_tasks[scene]:
       branches.append((scene, task)) # single scene, task pair for now
+    
+  print("Total navigation tasks: %d" % len(branches))
 
   NUM_TASKS = len(branches)
   assert PARALLEL_SIZE >= NUM_TASKS, "Not enough threads for multitasking: at least {} threads needed.".format(NUM_TASKS)
@@ -57,14 +60,20 @@ if __name__ == '__main__':
   training_threads = [] # 1 training thread for the single target
   for i in range(PARALLEL_SIZE):
     scene, task = branches[i%NUM_TASKS]
-    training_thread = SmashNetTrainingThread(i, global_network, initial_learning_rate,
-                                        learning_rate_input,
-                                        grad_applier, MAX_TIME_STEP,
-                                        device = device,
-                                        network_scope = "thread-%d"%(i+1),
-                                        scene_scope = scene,
-                                        task_scope = task)
+    training_thread = SmashNetTrainingThread(i, 
+                                             global_network, 
+                                             initial_learning_rate,
+                                             learning_rate_input,
+                                             grad_applier, 
+                                             MAX_TIME_STEP,
+                                             device,
+                                             initial_diffidence_rate_seed,
+                                             network_scope = "thread-%d"%(i+1),
+                                             scene_scope = scene,
+                                             task_scope = task)
     training_threads.append(training_thread)
+  
+  print("Total train threads: %d" % len(training_threads))
 
   # prepare session
   sess = tf.Session(config=tf.ConfigProto(log_device_placement=False,
@@ -85,7 +94,7 @@ if __name__ == '__main__':
     episode_length_input = tf.placeholder("float")
 
     scalar_summaries = [
-      tf.summary.scalar(key+"/Episode Length", episode_length_input),
+      tf.summary.scalar(key+"/Episode Length", episode_length_input)
     ]
 
     summary_op[key] = tf.summary.merge(scalar_summaries)
@@ -121,7 +130,7 @@ if __name__ == '__main__':
 
     scene, task = branches[parallel_index % NUM_TASKS]
     key = scene + "-" + task
-
+    
     while global_t < MAX_TIME_STEP and not stop_requested:
       diff_global_t = training_thread.process(sess, global_t, summary_writer,
                                               summary_op[key], summary_placeholders[key])

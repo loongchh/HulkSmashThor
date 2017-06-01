@@ -7,7 +7,7 @@ import sys
 
 from utils.accum_trainer import AccumTrainer
 from scene_loader import THORDiscreteEnvironment as Environment
-from dagger_policy_generator import SmashNet, ShortestPathOracle
+from dagger_policy_generators import SmashNet, ShortestPathOracle
 
 from dagger_constants import ACTION_SIZE, GAMMA, LOCAL_T_MAX, ENTROPY_BETA, VERBOSE
 
@@ -20,10 +20,10 @@ class SmashNetTrainingThread(object):
                grad_applier,
                max_global_time_step,
                device,
+               initial_diffidence_rate_seed,
                network_scope="network",
                scene_scope="scene",
-               task_scope="task", 
-               initial_diffidence_rate):
+               task_scope="task"):
     
     self.thread_index = thread_index
     self.learning_rate_input = learning_rate_input
@@ -40,10 +40,10 @@ class SmashNetTrainingThread(object):
                            network_scope=network_scope,
                            scene_scopes=[scene_scope])
     
-        self.local_network.prepare_loss(ENTROPY_BETA, self.scopes)
+    self.local_network.prepare_loss(self.scopes)
 
     self.trainer = AccumTrainer(device)
-    self.trainer.prepare_minimize(self.local_network.total_loss,
+    self.trainer.prepare_minimize(self.local_network.loss,
                                   self.local_network.get_vars())
 
     self.accum_gradients = self.trainer.accumulate_gradients()
@@ -66,8 +66,8 @@ class SmashNetTrainingThread(object):
     self.episode_length = 0
     self.episode_max_q = -np.inf
     
-    self.initial_diffidence_rate = initial_diffidence_rate
-    
+    self.initial_diffidence_rate_seed = initial_diffidence_rate_seed
+        
     self.oracle = None
     
     
@@ -83,25 +83,30 @@ class SmashNetTrainingThread(object):
     return rate 
 
   def _anneal_learning_rate(self, global_time_step):
-    learning_rate = self._anneal_rate(self.inital_learning_rate, global_time_step)
+    learning_rate = self._anneal_rate(self.initial_learning_rate, global_time_step)
     return learning_rate
+  
+  def _inverse_sigmoid_decay_rate(self, init_rate_seed, global_time_step):
+      rate = init_rate_seed*np.exp(-global_time_step/init_rate_seed)
+      rate = rate / (1. + rate)
+      return rate
 
   def _anneal_diffidence_rate(self, global_time_step):
-    diffidence_rate = self._anneal_rate(self.initial_diffidence_rate, global_time_step)
+    diffidence_rate = self._inverse_sigmoid_decay_rate(self.initial_diffidence_rate_seed, global_time_step)
     return diffidence_rate
 
   # TODO: check
-  def choose_action(self, smashnet_pi_values, oracle_pi_values, diffidence_rate):
+  def choose_action(self, smashnet_pi_values, oracle_pi_values, confidence_rate):
     
     r = random.random()
-    if r < diffidence_rate: pi_values = oracle_pi_values
+    if r < confidence_rate: pi_values = oracle_pi_values
     else: pi_values = smashnet_pi_values
-
+        
+    r = random.random() * np.sum(pi_values)
     values = np.cumsum(pi_values)
-    r = random.random() * np.sum(values)
     for i in range(len(values)): 
         if values[i] >= r: return i
-
+    
   def _record_score(self, sess, writer, summary_op, placeholders, values, global_t):
     feed_dict = {}
     for k in placeholders:
@@ -121,7 +126,7 @@ class SmashNetTrainingThread(object):
         'terminal_state_id': int(self.task_scope)
       })
       self.env.reset()
-      self.oracle = ShortestPathOracle(action_size=ACTION_SIZE, env)
+      self.oracle = ShortestPathOracle(self.env, ACTION_SIZE)
 
     states = []
     targets = []
@@ -141,7 +146,7 @@ class SmashNetTrainingThread(object):
     for i in range(LOCAL_T_MAX):
         
       smashnet_pi = self.local_network.run_policy(sess, self.env.s_t, self.env.target, self.scopes)
-      oracle_pi = self.oracle.run_policy(self.env.s_t)
+      oracle_pi = self.oracle.run_policy(self.env.current_state_id)
       
       diffidence_rate = self._anneal_diffidence_rate(global_t)
       action = self.choose_action(smashnet_pi, oracle_pi, diffidence_rate)
@@ -150,8 +155,8 @@ class SmashNetTrainingThread(object):
       targets.append(self.env.target)
       oracle_pis.append(oracle_pi)
 
-      if VERBOSE and (self.thread_index == 0) and (self.local_t % 1000) == 0:
-        sys.stdout.write("SmashNet Pi = {0}, Oracle Pi = {1}\n".format(smashnet_pi, oracle_pi))
+      if VERBOSE and (self.thread_index == 0) and (self.local_t % 100) == 0:
+         print("SmashNet Pi = %s, Oracle Pi = %s\n" % (smashnet_pi, oracle_pi))
 
       self.env.step(action)
 
@@ -166,7 +171,7 @@ class SmashNetTrainingThread(object):
       
       if is_terminal:
         terminal_end = True
-        sys.stdout.write("time %d | thread #%d | scene %s | target #%s\n%s %s episode reward = %.3f\n%s %s episode length = %d\n%s %s" % (global_t, self.thread_index, self.scene_scope, self.task_scope, self.scene_scope, self.task_scope, self.episode_reward, self.scene_scope, self.task_scope, self.episode_length, self.scene_scope, self.task_scope))
+        sys.stdout.write("time %d | thread #%d | scene %s | target %s | episode length = %d\n" % (global_t, self.thread_index, self.scene_scope, self.task_scope, self.episode_length))
 
         self.episode_length = 0
         self.env.reset()
