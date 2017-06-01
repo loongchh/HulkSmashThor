@@ -4,18 +4,18 @@ import numpy as np
 import networkx as nx
 
 class PolicyGenerator(object):
-    
+
     def __init__(self):
         pass
-    
+
     def run_policy(self, state):
         return NotImplementedError()
-    
+
 class ShortestPathOracle(PolicyGenerator):
-    
+
     def __init__(self, env, action_size):
         self.shortest_path_actions = self._calculate_shortest_paths(env, action_size)
-        
+
     def _calculate_shortest_paths(self, env, action_size):
         s_next_s_action = {}
         G = nx.DiGraph()
@@ -27,7 +27,7 @@ class ShortestPathOracle(PolicyGenerator):
               s_next_s_action[(s, next_s)] = a
               G.add_edge(s, next_s)
 
-        best_action = np.zeros((env.n_locations, 4), dtype=np.float)
+        best_action = np.zeros((env.n_locations, action_size), dtype=np.float)
         for i in range(env.n_locations):
           if i == env.terminal_state_id:
             continue
@@ -38,11 +38,11 @@ class ShortestPathOracle(PolicyGenerator):
             best_action[i, action] += 1
 
         action_sum = best_action.sum(axis=1, keepdims=True)
-        action_sum[action_sum == 0] = 1
+        action_sum[action_sum == 0] = 1  # prevent divide-by-zero
         shortest_path_actions = best_action / action_sum
-        
+
         return shortest_path_actions
-        
+
     def run_policy(self, s_t_id):
         return self.shortest_path_actions[s_t_id]
 
@@ -57,10 +57,10 @@ class SmashNet(PolicyGenerator):
                device="/cpu:0",
                network_scope="network",
                scene_scopes=["scene"]):
-    
+
     self.action_size = action_size
     self.device = device
-    
+
     self.pi = dict()
 
     self.W_fc1 = dict()
@@ -82,7 +82,7 @@ class SmashNet(PolicyGenerator):
 
       # target (input)
       self.t = tf.placeholder("float", [None, 2048, 4])
-        
+
       # "navigation" for global net, "thread-n" for local thread nets
       with tf.variable_scope(network_scope):
         # network key
@@ -108,7 +108,7 @@ class SmashNet(PolicyGenerator):
         for scene_scope in scene_scopes:
           # scene-specific key
           key = self._get_key([network_scope, scene_scope])
-          
+
           # "thread-n/scene"
           with tf.variable_scope(scene_scope):
 
@@ -124,31 +124,31 @@ class SmashNet(PolicyGenerator):
             # policy (output)
             pi_ = tf.matmul(h_fc3, self.W_policy[key]) + self.b_policy[key]
             self.pi[key] = tf.nn.softmax(pi_)
-            
+
   def run_policy(self, sess, state, target, scopes):
     key = self._get_key(scopes[:2])
     pi_out = sess.run( self.pi[key], feed_dict = {self.s : [state], self.t: [target]} )
     return pi_out[0]
 
   def prepare_loss(self, scopes): # only called by local thread nets
-    
+
     # drop task id (last element) as all tasks in
     # the same scene share the same output branch
     scope_key = self._get_key(scopes[:-1]) # "thread-n/scene"
 
     with tf.device(self.device):
-        
+
       # oracle policy
       self.opi = tf.placeholder("float", [None, self.action_size])
 
       # avoid NaN with clipping when value in pi becomes zero
       log_spi = tf.log(tf.clip_by_value(self.pi[scope_key], 1e-20, 1.0))
-    
+
       # cross entropy policy loss (output)
       policy_loss = - tf.reduce_sum(log_spi * self.opi, axis=1)
-        
-      self.loss = policy_loss  
-  
+
+      self.loss = policy_loss
+
   # TODO: returns all parameters for current net
   def get_vars(self):
     var_list = [
