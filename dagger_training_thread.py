@@ -4,6 +4,7 @@ import numpy as np
 import random
 import time
 import sys
+from scipy.spatial.distance import cosine
 
 from utils.accum_trainer import AccumTrainer
 from scene_loader import THORDiscreteEnvironment as Environment
@@ -62,9 +63,11 @@ class SmashNetTrainingThread(object):
 
     self.initial_learning_rate = initial_learning_rate
 
-    self.episode_reward = 0
+    # self.episode_reward = 0
     self.episode_length = 0
-    self.episode_max_q = -np.inf
+    # self.episode_max_q = -np.inf
+    self.episode_pi_sim = 0
+    self.episode_loss = 0
 
     self.initial_diffidence_rate_seed = initial_diffidence_rate_seed
 
@@ -163,6 +166,7 @@ class SmashNetTrainingThread(object):
       is_terminal = self.env.terminal or self.episode_length > 5e3
 
       self.episode_length += 1
+      self.episode_pi_sim += 1. - cosine(smashnet_pi, oracle_pi)
 
       self.local_t += 1
 
@@ -172,8 +176,17 @@ class SmashNetTrainingThread(object):
       if is_terminal:
         terminal_end = True
         # sys.stdout.write("time %d | thread #%d | scene %s | target %s | episode length = %d\n" % (global_t, self.thread_index, self.scene_scope, self.task_scope, self.episode_length))
+        summary_values = {
+            "episode_length_input": float(self.episode_length),
+            "episode_pi_sim_input": self.episode_pi_sim / float(self.episode_length),
+            "episode_loss_input": float(self.episode_loss)
+        }
 
+        self._record_score(sess, summary_writer, summary_op, summary_placeholders,
+                           summary_values, global_t)
         self.episode_length = 0
+        self.episode_pi_sim = 0
+        self.episode_loss = 0
         self.env.reset()
 
         break
@@ -197,6 +210,12 @@ class SmashNetTrainingThread(object):
                 self.local_network.s: batch_si,
                 self.local_network.t: batch_ti,
                 self.local_network.opi: batch_opi} )
+
+    self.episode_loss += sum(sess.run(self.local_network.loss,
+                                      feed_dict={
+                                          self.local_network.s: batch_si,
+                                          self.local_network.t: batch_ti,
+                                          self.local_network.opi: batch_opi}))
 
     cur_learning_rate = self._anneal_learning_rate(global_t)
     sess.run( self.apply_gradients, feed_dict = { self.learning_rate_input: cur_learning_rate } )

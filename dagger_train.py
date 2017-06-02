@@ -92,15 +92,20 @@ if __name__ == '__main__':
 
     # summary for tensorboard
     episode_length_input = tf.placeholder("float")
+    episode_pi_sim_input = tf.placeholder("float")
+    episode_loss_input = tf.placeholder("float")
 
     scalar_summaries = [
-      tf.summary.scalar(key+"/Episode Length", episode_length_input)
+      tf.summary.scalar(key+"/Episode Length", episode_length_input),
+      tf.summary.scalar(key+"/Episode Pi Similarity", episode_pi_sim_input),
+      tf.summary.scalar(key+"/Episode Loss", episode_loss_input),
     ]
 
     summary_op[key] = tf.summary.merge(scalar_summaries)
     summary_placeholders[key] = {
       "episode_length_input": episode_length_input,
-      "learning_rate_input": learning_rate_input
+      "episode_pi_sim_input": episode_pi_sim_input,
+      "episode_loss_input": episode_loss_input,
     }
 
   summary_writer = tf.summary.FileWriter(LOG_FILE, sess.graph)
