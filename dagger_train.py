@@ -14,13 +14,13 @@ from dagger_training_thread import SmashNetTrainingThread
 from utils.ops import log_uniform
 from utils.rmsprop_applier import RMSPropApplier
 
-from dagger_constants import ACTION_SIZE, PARALLEL_SIZE, INITIAL_ALPHA_LOW, INITIAL_ALPHA_HIGH, INITIAL_ALPHA_LOG_RATE, INITIAL_DIFFIDENCE_RATE, MAX_TIME_STEP, CHECKPOINT_DIR, LOG_FILE, RMSP_EPSILON, RMSP_ALPHA, GRAD_NORM_CLIP, USE_GPU, TASK_TYPE, TASK_LIST
+from dagger_constants import ACTION_SIZE, PARALLEL_SIZE, INITIAL_ALPHA_LOW, INITIAL_ALPHA_HIGH, INITIAL_ALPHA_LOG_RATE, INITIAL_DIFFIDENCE_RATE, MAX_TIME_STEP, CHECKPOINT_DIR, LOG_FILE, RMSP_EPSILON, RMSP_ALPHA, GRAD_NORM_CLIP, USE_GPU, TASK_TYPE, TRAIN_TASK_LIST
 
 if __name__ == '__main__':
 
   device = "/gpu:0" if USE_GPU else "/cpu:0"
   network_scope = TASK_TYPE
-  list_of_tasks = TASK_LIST # single scene, single target for now
+  list_of_tasks = TRAIN_TASK_LIST # single scene, single target for now
   scene_scopes = list_of_tasks.keys()
   global_t = 0
   stop_requested = False
