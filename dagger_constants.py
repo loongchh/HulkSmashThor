@@ -29,10 +29,10 @@ TASK_TYPE = 'navigation' # no need to change
 
 # DAGGER IMITATION LEARNING SPECIFIC
 
-PARALLEL_SIZE = 1 # parallel thread size
+PARALLEL_SIZE = 4 # parallel thread size
 TRAIN_TASK_LIST = {
-  'bathroom_02'    : ['26']
+  'bathroom_02'    : ['26', '37', '43', '53']
 }
 TEST_TASK_LIST = {
-  'bathroom_02' : ['26']
+  'bathroom_02' : ['26', '37', '43', '53']
 }
