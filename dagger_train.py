@@ -7,6 +7,7 @@ import numpy as np
 import signal
 import random
 import os
+import time
 
 from dagger_policy_generators import SmashNet
 from dagger_training_thread import SmashNetTrainingThread
@@ -108,7 +109,7 @@ if __name__ == '__main__':
       "episode_loss_input": episode_loss_input,
     }
 
-  summary_writer = tf.summary.FileWriter(LOG_FILE, sess.graph)
+  summary_writer = tf.summary.FileWriter(LOG_FILE + '/' + time.strftime("%Y-%m-%d-%H%M%S"), sess.graph)
 
   # init or load checkpoint with saver
   # if you don't need to be able to resume training, use the next line instead.
