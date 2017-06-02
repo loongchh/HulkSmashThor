@@ -7,7 +7,7 @@ CHECKPOINT_DIR = 'checkpoints'
 LOG_FILE = 'logs'
 INITIAL_ALPHA_LOW = 1e-4    # log_uniform low limit for learning rate
 INITIAL_ALPHA_HIGH = 1e-2   # log_uniform high limit for learning rate
-INITIAL_DIFFIDENCE_RATE = 2000
+INITIAL_DIFFIDENCE_RATE = 750
 
 ACTION_SIZE = 4 # action size
 
@@ -29,10 +29,10 @@ TASK_TYPE = 'navigation' # no need to change
 
 # DAGGER IMITATION LEARNING SPECIFIC
 
-PARALLEL_SIZE = 4 # parallel thread size
+PARALLEL_SIZE = 20 # parallel thread size
 TRAIN_TASK_LIST = {
   'bathroom_02'    : ['26', '37', '43', '53']
 }
 TEST_TASK_LIST = {
-  'bathroom_02' : ['26', '37', '43', '53']
+  'bathroom_02' : ['26', '37', '43', '53', '69']
 }

@@ -37,10 +37,8 @@ if __name__ == '__main__':
   else:
     print("Could not find old checkpoint")
 
-  scene_stats = dict()
   for scene_scope in scene_scopes:
 
-    scene_stats[scene_scope] = []
     for task_scope in list_of_tasks[scene_scope]:
 
       env = Environment({
@@ -50,6 +48,7 @@ if __name__ == '__main__':
       ep_lengths = []
       ep_collisions = []
       oracle_lengths = []
+      ep_successes = []
 
       scopes = [network_scope, scene_scope, task_scope]
 
@@ -57,11 +56,7 @@ if __name__ == '__main__':
 
         env.reset()
         
-        oracle_lengths.append(env.shortest_path_distances[env.current_state_id][env.terminal_state_id])
-        
         terminal = False
-        ep_collision = 0
-        ep_length = 0
 
         while not terminal:
 
@@ -77,12 +72,12 @@ if __name__ == '__main__':
 
         ep_lengths.append(ep_length)
         ep_collisions.append(ep_collision)
-        if VERBOSE: print("Episode #{} ends after {} steps".format(i_episode, ep_length))
+	oracle_lengths.append(env.shortest_path_distances[env.current_state_id][env.terminal_state_id])
+        ep_successes.append(int(ep_length  < 500))      
 
       print('Evaluation: %s %s' % (scene_scope, task_scope))
       print('Episode Lengths\n Mean: %.2f, Stddev: %.2f' % (np.mean(ep_lengths), np.std(ep_lengths)))
       print('Episode Collisions\n Mean: %.2f, Stddev: %.2f' % (np.mean(ep_collisions), np.std(ep_collisions)))
       print('Oracle Lengths\n Mean: %.2f, Stddev: %.2f' % (np.mean(oracle_lengths), np.std(oracle_lengths)))
+      print('Success Rate\n Mean: %.2f' % (np.mean(ep_successes)))
       print('\n')
-
-      scene_stats[scene_scope].extend(ep_lengths)
