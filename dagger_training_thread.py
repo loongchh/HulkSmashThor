@@ -7,10 +7,11 @@ import sys
 from scipy.spatial.distance import cosine
 
 from utils.accum_trainer import AccumTrainer
+from utils.ops import sample_action
 from scene_loader import THORDiscreteEnvironment as Environment
 from dagger_policy_generators import SmashNet, ShortestPathOracle
 
-from dagger_constants import ACTION_SIZE, GAMMA, LOCAL_T_MAX, ENTROPY_BETA, VERBOSE
+from dagger_constants import ACTION_SIZE, GAMMA, LOCAL_T_MAX, ENTROPY_BETA, VERBOSE, VALID_TASK_LIST, NUM_VAL_EPISODES, VALIDATE, VALIDATE_FREQUENCY, SUCCESS_CUTOFF, MAX_VALID_STEPS
 
 class SmashNetTrainingThread(object):
   def __init__(self,
@@ -95,8 +96,8 @@ class SmashNetTrainingThread(object):
       return rate
 
   def _anneal_diffidence_rate(self, global_time_step):
-    diffidence_rate = self._inverse_sigmoid_decay_rate(self.initial_diffidence_rate_seed, global_time_step)
-    return diffidence_rate
+    if self.initial_diffidence_rate_seed == 0: return 0
+    else: return self._inverse_sigmoid_decay_rate(self.initial_diffidence_rate_seed, global_time_step)
 
   # TODO: check
   def choose_action(self, smashnet_pi_values, oracle_pi_values, confidence_rate):
@@ -117,6 +118,56 @@ class SmashNetTrainingThread(object):
     summary_str = sess.run(summary_op, feed_dict=feed_dict)
     writer.add_summary(summary_str, global_t)
     # writer.flush()
+
+  
+  def _evaluate(self, sess, list_of_tasks, num_episodes, max_steps, success_cutoff):
+
+    scene_scopes = list_of_tasks.keys()
+    results = {}
+    
+    for scene_scope in scene_scopes:
+
+        for task_scope in list_of_tasks[scene_scope]:
+
+            env = Environment({
+                'scene_name': scene_scope,
+                'terminal_state_id': int(task_scope)
+            })
+            ep_lengths = []
+            ep_collisions = []
+            oracle_lengths = []
+            ep_successes = []
+
+            scopes = [self.network_scope, scene_scope, task_scope]
+
+            for i_episode in range(num_episodes):
+
+                env.reset()
+                oracle_lengths.append(env.shortest_path_distances[env.current_state_id][env.terminal_state_id])
+
+                terminal = False
+                ep_length = 0
+                ep_collision = 0
+
+                while not terminal:
+
+                  pi_values = self.local_network.run_policy(sess, env.s_t, env.target, scopes)
+                  action = sample_action(pi_values)
+                  env.step(action)
+                  env.update()
+
+                  terminal = env.terminal
+                  if ep_length == max_steps: break
+                  if env.collided: ep_collision += 1
+                  ep_length += 1
+
+                ep_lengths.append(ep_length)
+                ep_collisions.append(ep_collision)
+                ep_successes.append(int(ep_length  < success_cutoff))
+
+            results[scene_scope + task_scope] = [np.mean(ep_lengths), np.mean(ep_collisions), np.mean(oracle_lengths), np.mean(ep_successes)]
+
+    return results
 
   def process(self, sess, global_t, summary_writer, summary_op, summary_placeholders):
 
@@ -149,7 +200,7 @@ class SmashNetTrainingThread(object):
 
       smashnet_pi = self.local_network.run_policy(sess, self.env.s_t, self.env.target, self.scopes)
       oracle_pi = self.oracle.run_policy(self.env.current_state_id)
-
+      
       diffidence_rate = self._anneal_diffidence_rate(global_t)
       action = self.choose_action(smashnet_pi, oracle_pi, diffidence_rate)
 
@@ -157,8 +208,14 @@ class SmashNetTrainingThread(object):
       targets.append(self.env.target)
       oracle_pis.append(oracle_pi)
 
-      if VERBOSE and (self.local_t % 1000) == 0:
-         sys.stdout.write("SmashNet Pi = {}, Oracle Pi = {}\n".format(["{:0.2f}".format(i) for i in smashnet_pi], ["{:0.2f}".format(i) for i in oracle_pi]))
+      # if VERBOSE and (self.local_t % 1000) == 0:
+      #    print("Thread %d" % (self.thread_index))
+      #    sys.stdout.write("SmashNet Pi = {}, Oracle Pi = {}\n".format(["{:0.2f}".format(i) for i in smashnet_pi], ["{:0.2f}".format(i) for i in oracle_pi]))
+      
+      if VALIDATE and global_t % VALIDATE_FREQUENCY == 0 and global_t > 0 and self.thread_index == 0:
+        results = self._evaluate(sess, list_of_tasks=VALID_TASK_LIST, num_episodes=NUM_VAL_EPISODES, max_steps=MAX_VALID_STEPS, success_cutoff=SUCCESS_CUTOFF)
+        print("Thread %d" % (self.thread_index))
+        print("Validation results: %s" % (results))
 
       self.env.step(action)
 

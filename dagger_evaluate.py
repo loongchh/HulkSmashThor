@@ -55,8 +55,10 @@ if __name__ == '__main__':
       for i_episode in range(NUM_EVAL_EPISODES):
 
         env.reset()
-        
+        oracle_lengths.append(env.shortest_path_distances[env.current_state_id][env.terminal_state_id])
         terminal = False
+        ep_length = 0
+        ep_collision = 0
 
         while not terminal:
 
@@ -72,7 +74,6 @@ if __name__ == '__main__':
 
         ep_lengths.append(ep_length)
         ep_collisions.append(ep_collision)
-	oracle_lengths.append(env.shortest_path_distances[env.current_state_id][env.terminal_state_id])
         ep_successes.append(int(ep_length  < 500))      
 
       print('Evaluation: %s %s' % (scene_scope, task_scope))
