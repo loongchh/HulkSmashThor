@@ -17,6 +17,7 @@ ENTROPY_BETA = 0.01 # entropy regurarlization constant
 MAX_TIME_STEP = 10.0 * 10**6 # 10 million frames
 GRAD_NORM_CLIP = 40.0 # gradient norm clipping
 USE_GPU = True # To use GPU, set True
+NUM_CPU = 8
 VERBOSE = True
 
 SCREEN_WIDTH = 84
@@ -29,10 +30,16 @@ TASK_TYPE = 'navigation' # no need to change
 
 # DAGGER IMITATION LEARNING SPECIFIC
 
-PARALLEL_SIZE = 20 # parallel thread size
+PARALLEL_SIZE = 11 # parallel thread size
 TRAIN_TASK_LIST = {
   'bathroom_02'    : ['26', '37', '43', '53']
 }
 TEST_TASK_LIST = {
   'bathroom_02' : ['26', '37', '43', '53', '69']
 }
+
+# The task lists above are ignored when the following is specified
+TRAIN_SCENES = ['bathroom_02']
+NUM_TRAIN_TASK = 10
+NUM_VAL_TASK = 1
+NUM_TEST_TASK = 1

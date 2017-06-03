@@ -22,6 +22,7 @@ class SmashNetTrainingThread(object):
                max_global_time_step,
                device,
                initial_diffidence_rate_seed,
+               mode="train",
                network_scope="network",
                scene_scope="scene",
                task_scope="task"):
@@ -72,6 +73,7 @@ class SmashNetTrainingThread(object):
     self.initial_diffidence_rate_seed = initial_diffidence_rate_seed
 
     self.oracle = None
+    self.mode = mode
 
 
   def _local_var_name(self, var):
@@ -163,6 +165,8 @@ class SmashNetTrainingThread(object):
       self.env.step(action)
 
       is_terminal = self.env.terminal or self.episode_length > 5e3
+      if self.mode is "val" and self.episode_length > 100:
+        is_terminal = True
 
       self.episode_length += 1
       self.episode_pi_sim += 1. - cosine(smashnet_pi, oracle_pi)
@@ -174,7 +178,8 @@ class SmashNetTrainingThread(object):
 
       if is_terminal:
         terminal_end = True
-        # sys.stdout.write("time %d | thread #%d | scene %s | target %s | episode length = %d\n" % (global_t, self.thread_index, self.scene_scope, self.task_scope, self.episode_length))
+        if self.mode is "val":
+          sys.stdout.write("time %d | thread #%d | scene %s | target %s | episode length = %d\n" % (global_t, self.thread_index, self.scene_scope, self.task_scope, self.episode_length))
         summary_values = {
             "episode_length_input": float(self.episode_length),
             "episode_pi_sim_input": self.episode_pi_sim / float(self.episode_length),
@@ -190,34 +195,35 @@ class SmashNetTrainingThread(object):
 
         break
 
-    states.reverse()
-    oracle_pis.reverse()
+    if self.mode is "train":
+      states.reverse()
+      oracle_pis.reverse()
 
-    batch_si = []
-    batch_ti = []
-    batch_opi = []
+      batch_si = []
+      batch_ti = []
+      batch_opi = []
 
-    # compute and accmulate gradients
-    for(si, ti, opi) in zip(states, targets, oracle_pis):
+      # compute and accmulate gradients
+      for(si, ti, opi) in zip(states, targets, oracle_pis):
 
-      batch_si.append(si)
-      batch_ti.append(ti)
-      batch_opi.append(opi)
+        batch_si.append(si)
+        batch_ti.append(ti)
+        batch_opi.append(opi)
 
-    sess.run( self.accum_gradients,
-              feed_dict = {
-                self.local_network.s: batch_si,
-                self.local_network.t: batch_ti,
-                self.local_network.opi: batch_opi} )
+      sess.run( self.accum_gradients,
+                feed_dict = {
+                  self.local_network.s: batch_si,
+                  self.local_network.t: batch_ti,
+                  self.local_network.opi: batch_opi} )
 
-    self.episode_loss += sum(sess.run(self.local_network.loss,
-                                      feed_dict={
-                                          self.local_network.s: batch_si,
-                                          self.local_network.t: batch_ti,
-                                          self.local_network.opi: batch_opi}))
+      self.episode_loss += sum(sess.run(self.local_network.loss,
+                                        feed_dict={
+                                            self.local_network.s: batch_si,
+                                            self.local_network.t: batch_ti,
+                                            self.local_network.opi: batch_opi}))
 
-    cur_learning_rate = self._anneal_learning_rate(global_t)
-    sess.run( self.apply_gradients, feed_dict = { self.learning_rate_input: cur_learning_rate } )
+      cur_learning_rate = self._anneal_learning_rate(global_t)
+      sess.run( self.apply_gradients, feed_dict = { self.learning_rate_input: cur_learning_rate } )
 
     # if VERBOSE and (self.thread_index == 0) and (self.local_t % 100) == 0:
     #   sys.stdout.write("Local timestep %d\n" % self.local_t)
