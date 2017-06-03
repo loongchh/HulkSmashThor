@@ -30,26 +30,38 @@ TASK_TYPE = 'navigation' # no need to change
 
 INITIAL_DIFFIDENCE_RATE = 0
 PARALLEL_SIZE = 16 # parallel thread size
+# TRAIN_TASK_LIST = {
+#   'bathroom_02'    : ['26', '37', '43', '53'],
+#   'bedroom_04'     : ['134', '264', '320', '384'],
+#   'kitchen_02'     : ['90', '136', '157', '207'],
+#   'living_room_08' : ['92', '135', '193', '228']
+# }
+# TEST_TASK_LIST = {
+#   'bathroom_02'    : ['26', '37', '43', '53', '69'],
+#   'bedroom_04'     : ['134', '264', '320', '384', '387'],
+#   'kitchen_02'     : ['90', '136', '157', '207', '329'],
+#   'living_room_08' : ['92', '135', '193', '228', '254']
+# }
+# VALID_TASK_LIST = {
+#   'bathroom_02'    : ['26', '69'],
+#   'bedroom_04'     : ['134', '387'],
+#   'kitchen_02'     : ['90', '329'],
+#   'living_room_08' : ['92', '254']
+# }
+
 TRAIN_TASK_LIST = {
-  'bathroom_02'    : ['26', '37', '43', '53'],
-  'bedroom_04'     : ['134', '264', '320', '384'],
-  'kitchen_02'     : ['90', '136', '157', '207'],
-  'living_room_08' : ['92', '135', '193', '228']
+  'bathroom_02'    : ['26', '37', '43', '53']
 }
 TEST_TASK_LIST = {
-  'bathroom_02'    : ['26', '37', '43', '53', '69'],
-  'bedroom_04'     : ['134', '264', '320', '384', '387'],
-  'kitchen_02'     : ['90', '136', '157', '207', '329'],
-  'living_room_08' : ['92', '135', '193', '228', '254']
+  'bathroom_02'    : ['26', '69'],
 }
 VALID_TASK_LIST = {
   'bathroom_02'    : ['26', '69'],
-  'bedroom_04'     : ['134', '387'],
-  'kitchen_02'     : ['90', '329'],
-  'living_room_08' : ['92', '254']
 }
+
 NUM_VAL_EPISODES = 20
 VALIDATE = True
 VALIDATE_FREQUENCY = 50000
 SUCCESS_CUTOFF = 500
 MAX_VALID_STEPS = 1000
+ENCOURAGE_SYMMETRY = True

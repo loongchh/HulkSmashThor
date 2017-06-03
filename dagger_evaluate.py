@@ -10,8 +10,15 @@ from scene_loader import THORDiscreteEnvironment as Environment
 
 from utils.ops import sample_action
 
-from dagger_constants import ACTION_SIZE, CHECKPOINT_DIR, NUM_EVAL_EPISODES, VERBOSE, TASK_TYPE, TEST_TASK_LIST
+from dagger_constants import ACTION_SIZE, CHECKPOINT_DIR, NUM_EVAL_EPISODES, VERBOSE, TASK_TYPE, TEST_TASK_LIST, ENCOURAGE_SYMMETRY
 
+def _flip_policy(policy):
+    flipped_policy = np.array([policy[3],
+                     policy[2],
+                     policy[1],
+                     policy[0]])
+    return flipped_policy
+    
 if __name__ == '__main__':
 
   device = "/cpu:0" # use CPU for display tool
@@ -61,8 +68,11 @@ if __name__ == '__main__':
         ep_collision = 0
 
         while not terminal:
-
-          pi_values = global_network.run_policy(sess, env.s_t, env.target, scopes)
+          
+          flipped_run = ENCOURAGE_SYMMETRY and np.random.random() > 0.5
+          
+          if flipped_run: pi_values = _flip_policy(global_network.run_policy(sess, env.target, env.s_t, scopes))
+          else: pi_values = global_network.run_policy(sess, env.s_t, env.target, scopes)         
           action = sample_action(pi_values)
           env.step(action)
           env.update()
@@ -71,7 +81,7 @@ if __name__ == '__main__':
           if ep_length == 10000: break
           if env.collided: ep_collision += 1
           ep_length += 1
-
+        print("Episode length : %d" % ep_length)
         ep_lengths.append(ep_length)
         ep_collisions.append(ep_collision)
         ep_successes.append(int(ep_length  < 500))      

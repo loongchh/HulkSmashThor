@@ -25,7 +25,8 @@ class SmashNetTrainingThread(object):
                initial_diffidence_rate_seed,
                network_scope="network",
                scene_scope="scene",
-               task_scope="task"):
+               task_scope="task",
+               encourage_symmetry=False):
 
     self.thread_index = thread_index
     self.learning_rate_input = learning_rate_input
@@ -73,6 +74,8 @@ class SmashNetTrainingThread(object):
     self.initial_diffidence_rate_seed = initial_diffidence_rate_seed
 
     self.oracle = None
+    
+    self.encourage_symmetry = encourage_symmetry
 
 
   def _local_var_name(self, var):
@@ -169,6 +172,13 @@ class SmashNetTrainingThread(object):
 
     return results
 
+  def _flip_policy(self, policy):
+        flipped_policy = np.array([policy[3],
+                         policy[2],
+                         policy[1],
+                         policy[0]])
+        return flipped_policy
+
   def process(self, sess, global_t, summary_writer, summary_op, summary_placeholders):
 
     if self.env is None:
@@ -197,21 +207,29 @@ class SmashNetTrainingThread(object):
 
     # t_max times loop (5 steps)
     for i in range(LOCAL_T_MAX):
-
-      smashnet_pi = self.local_network.run_policy(sess, self.env.s_t, self.env.target, self.scopes)
+        
+      flipped_run = self.encourage_symmetry and np.random.random() > 0.5
+    
+      if flipped_run: s_t = self.env.target; g = self.env.s_t
+      else: s_t = self.env.s_t; g = self.env.target
+    
+      smashnet_pi = self.local_network.run_policy(sess, s_t, g, self.scopes)
+      if flipped_run: smashnet_pi = self._flip_policy(smashnet_pi)
+            
       oracle_pi = self.oracle.run_policy(self.env.current_state_id)
       
       diffidence_rate = self._anneal_diffidence_rate(global_t)
       action = self.choose_action(smashnet_pi, oracle_pi, diffidence_rate)
-
-      states.append(self.env.s_t)
-      targets.append(self.env.target)
-      oracle_pis.append(oracle_pi)
-
-      # if VERBOSE and (self.local_t % 1000) == 0:
-      #    print("Thread %d" % (self.thread_index))
-      #    sys.stdout.write("SmashNet Pi = {}, Oracle Pi = {}\n".format(["{:0.2f}".format(i) for i in smashnet_pi], ["{:0.2f}".format(i) for i in oracle_pi]))
+    
+      states.append(s_t)
+      targets.append(g)
+      if flipped_run: oracle_pis.append(self._flip_policy(oracle_pi))
+      else: oracle_pis.append(oracle_pi)
       
+      # if VERBOSE and global_t % 10000 == 0:
+      #       print("Thread %d" % (self.thread_index))
+      #       sys.stdout.write("SmashNet Pi = {}, Oracle Pi = {}\n".format(["{:0.2f}".format(i) for i in smashnet_pi], ["{:0.2f}".format(i) for i in oracle_pi]))
+
       if VALIDATE and global_t % VALIDATE_FREQUENCY == 0 and global_t > 0 and self.thread_index == 0:
         results = self._evaluate(sess, list_of_tasks=VALID_TASK_LIST, num_episodes=NUM_VAL_EPISODES, max_steps=MAX_VALID_STEPS, success_cutoff=SUCCESS_CUTOFF)
         print("Thread %d" % (self.thread_index))
