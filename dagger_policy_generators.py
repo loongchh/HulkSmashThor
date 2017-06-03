@@ -127,8 +127,8 @@ class SmashNet(PolicyGenerator):
 
   def run_policy(self, sess, state, target, scopes):
     key = self._get_key(scopes[:2])
-    pi_out = sess.run( self.pi[key], feed_dict = {self.s : [state], self.t: [target]} )
-    return pi_out[0]
+    pi_out = sess.run( self.pi[key], feed_dict = {self.s : [state], self.t: [target]} )[0]
+    return pi_out
 
   def prepare_loss(self, scopes): # only called by local thread nets
 

@@ -16,7 +16,7 @@ from scene_loader import THORDiscreteEnvironment as Environment
 from utils.ops import log_uniform
 from utils.rmsprop_applier import RMSPropApplier
 
-from dagger_constants import ACTION_SIZE, PARALLEL_SIZE, INITIAL_ALPHA_LOW, INITIAL_ALPHA_HIGH, INITIAL_ALPHA_LOG_RATE, INITIAL_DIFFIDENCE_RATE, MAX_TIME_STEP, CHECKPOINT_DIR, LOG_FILE, RMSP_EPSILON, RMSP_ALPHA, GRAD_NORM_CLIP, USE_GPU, TASK_TYPE, TRAIN_TASK_LIST, TRAIN_SCENES, NUM_TRAIN_TASK, NUM_VAL_TASK, NUM_TEST_TASK
+from dagger_constants import ACTION_SIZE, PARALLEL_SIZE, INITIAL_ALPHA_LOW, INITIAL_ALPHA_HIGH, INITIAL_ALPHA_LOG_RATE, INITIAL_DIFFIDENCE_RATE, MAX_TIME_STEP, CHECKPOINT_DIR, LOG_FILE, RMSP_EPSILON, RMSP_ALPHA, GRAD_NORM_CLIP, USE_GPU, TASK_TYPE, TRAIN_TASK_LIST, TRAIN_SCENES, NUM_TRAIN_TASK, NUM_VAL_TASK, NUM_TEST_TASK, ENCOURAGE_SYMMETRY
 
 if __name__ == '__main__':
   device = "/gpu:0" if USE_GPU else "/cpu:0"
@@ -86,7 +86,8 @@ if __name__ == '__main__':
                                              mode=mode,
                                              network_scope = "thread-%d"%(i+1),
                                              scene_scope = scene,
-                                             task_scope = task)
+                                             task_scope = task,
+                                             encourage_symmetry= ENCOURAGE_SYMMETRY)
     training_threads.append(training_thread)
 
   print("Total train threads: %d" % len(training_threads))
