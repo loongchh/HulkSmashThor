@@ -46,17 +46,18 @@ class SmashNetTrainingThread(object):
 
     self.local_network.prepare_loss(self.scopes)
 
-    self.trainer = AccumTrainer(device)
-    self.trainer.prepare_minimize(self.local_network.loss,
-                                  self.local_network.get_vars())
+    if mode is "train":
+      self.trainer = AccumTrainer(device)
+      self.trainer.prepare_minimize(self.local_network.loss,
+                                    self.local_network.get_vars())
 
-    self.accum_gradients = self.trainer.accumulate_gradients()
-    self.reset_gradients = self.trainer.reset_gradients()
+      self.accum_gradients = self.trainer.accumulate_gradients()
+      self.reset_gradients = self.trainer.reset_gradients()
 
-    accum_grad_names = [self._local_var_name(x) for x in self.trainer.get_accum_grad_list()]
-    global_net_vars = [x for x in global_network.get_vars() if self._get_accum_grad_name(x) in accum_grad_names]
+      accum_grad_names = [self._local_var_name(x) for x in self.trainer.get_accum_grad_list()]
+      global_net_vars = [x for x in global_network.get_vars() if self._get_accum_grad_name(x) in accum_grad_names]
 
-    self.apply_gradients = grad_applier.apply_gradients( global_net_vars, self.trainer.get_accum_grad_list() )
+      self.apply_gradients = grad_applier.apply_gradients( global_net_vars, self.trainer.get_accum_grad_list() )
 
     self.sync = self.local_network.sync_from(global_network)
 
@@ -123,12 +124,12 @@ class SmashNetTrainingThread(object):
     writer.add_summary(summary_str, global_t)
     # writer.flush()
 
-  
+
   def _evaluate(self, sess, list_of_tasks, num_episodes, max_steps, success_cutoff):
 
     scene_scopes = list_of_tasks.keys()
     results = {}
-    
+
     for scene_scope in scene_scopes:
 
         for task_scope in list_of_tasks[scene_scope]:
@@ -198,35 +199,36 @@ class SmashNetTrainingThread(object):
 
     terminal_end = False
 
-    # reset accumulated gradients
-    sess.run( self.reset_gradients )
+    if self.mode is "train":
+      # reset accumulated gradients
+      sess.run( self.reset_gradients )
 
-    # copy weights from shared to local
-    sess.run( self.sync )
+      # copy weights from shared to local
+      sess.run( self.sync )
 
     start_local_t = self.local_t
 
     # t_max times loop (5 steps)
     for i in range(LOCAL_T_MAX):
-        
+
       flipped_run = self.encourage_symmetry and np.random.random() > 0.5
-    
+
       if flipped_run: s_t = self.env.target; g = self.env.s_t
       else: s_t = self.env.s_t; g = self.env.target
-    
+
       smashnet_pi = self.local_network.run_policy(sess, s_t, g, self.scopes)
       if flipped_run: smashnet_pi = self._flip_policy(smashnet_pi)
-            
+
       oracle_pi = self.oracle.run_policy(self.env.current_state_id)
-      
+
       diffidence_rate = self._anneal_diffidence_rate(global_t)
       action = self.choose_action(smashnet_pi, oracle_pi, diffidence_rate)
-    
+
       states.append(s_t)
       targets.append(g)
       if flipped_run: oracle_pis.append(self._flip_policy(oracle_pi))
       else: oracle_pis.append(oracle_pi)
-      
+
       # if VERBOSE and global_t % 10000 == 0:
       #       print("Thread %d" % (self.thread_index))
       #       sys.stdout.write("SmashNet Pi = {}, Oracle Pi = {}\n".format(["{:0.2f}".format(i) for i in smashnet_pi], ["{:0.2f}".format(i) for i in oracle_pi]))
@@ -253,7 +255,9 @@ class SmashNetTrainingThread(object):
       if is_terminal:
         terminal_end = True
         if self.mode is "val":
+          sess.run(self.sync)
           sys.stdout.write("time %d | thread #%d | scene %s | target %s | episode length = %d\n" % (global_t, self.thread_index, self.scene_scope, self.task_scope, self.episode_length))
+
         summary_values = {
             "episode_length_input": float(self.episode_length),
             "episode_pi_sim_input": self.episode_pi_sim / float(self.episode_length),
