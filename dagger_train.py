@@ -16,21 +16,13 @@ from scene_loader import THORDiscreteEnvironment as Environment
 from utils.ops import log_uniform
 from utils.rmsprop_applier import RMSPropApplier
 
-from dagger_constants import ACTION_SIZE, PARALLEL_SIZE, INITIAL_ALPHA_LOW, INITIAL_ALPHA_HIGH, INITIAL_ALPHA_LOG_RATE, INITIAL_DIFFIDENCE_RATE, MAX_TIME_STEP, CHECKPOINT_DIR, LOG_FILE, RMSP_EPSILON, RMSP_ALPHA, GRAD_NORM_CLIP, USE_GPU, NUM_CPU, TASK_TYPE, TRAIN_TASK_LIST, TRAIN_SCENES, NUM_TRAIN_TASK, NUM_VAL_TASK, NUM_TEST_TASK, ENCOURAGE_SYMMETRY
+from dagger_constants import ACTION_SIZE, PARALLEL_SIZE, INITIAL_ALPHA_LOW, INITIAL_ALPHA_HIGH, INITIAL_ALPHA_LOG_RATE, INITIAL_DIFFIDENCE_RATE, MAX_TIME_STEP, CHECKPOINT_DIR, LOG_FILE, RMSP_EPSILON, RMSP_ALPHA, GRAD_NORM_CLIP, USE_GPU, NUM_CPU, TASK_TYPE, TRAIN_TASK_LIST, VALID_TASK_LIST, DYNAMIC_VALIDATE, ENCOURAGE_SYMMETRY
 
 if __name__ == '__main__':
   device = "/gpu:0" if USE_GPU else "/cpu:0"
   network_scope = TASK_TYPE
-  if NUM_TRAIN_TASK > 0:
-    list_of_tasks = {}
-    for scene in TRAIN_SCENES:
-      env = Environment({'scene_name': scene})
-      n_loc = env.n_locations
-      assert(n_loc >= NUM_TRAIN_TASK + NUM_VAL_TASK)
-      targets = np.random.choice(range(n_loc), NUM_TRAIN_TASK + NUM_VAL_TASK, replace=False)
-      list_of_tasks[scene] = [str(t) for t in targets]
-  else:
-    list_of_tasks = TRAIN_TASK_LIST # single scene, single target for now
+  list_of_tasks = TRAIN_TASK_LIST
+  list_of_val_tasks = VALID_TASK_LIST
   scene_scopes = list_of_tasks.keys()
   global_t = 0
   stop_requested = False
@@ -48,9 +40,15 @@ if __name__ == '__main__':
                                         scene_scopes = scene_scopes)
 
   branches = []
+  branch_val = []
   for scene in scene_scopes:
     for task in list_of_tasks[scene]:
       branches.append((scene, task)) # single scene, task pair for now
+      branch_val.append(False)
+    if DYNAMIC_VALIDATE:
+      for task in list_of_val_tasks[scene]:
+        branches.append((scene, task))
+        branch_val.append(True)
 
   print("Total navigation tasks: %d" % len(branches))
 
@@ -74,7 +72,7 @@ if __name__ == '__main__':
       device = "/gpu:0"
     else:
       device = "/cpu:{:d}".format(i%NUM_CPU)
-    mode = "val" if i % NUM_TASKS >= NUM_TRAIN_TASK else "train"
+    mode = "val" if branch_val[i % NUM_TASKS] else "train"
     training_thread = SmashNetTrainingThread(i,
                                              global_network,
                                              initial_learning_rate,
@@ -106,8 +104,8 @@ if __name__ == '__main__':
   for i in range(PARALLEL_SIZE):
     scene, task = branches[i%NUM_TASKS]
     key = scene + "-" + task
-    if i % NUM_TASKS >= NUM_TRAIN_TASK:
-      key += "-val"
+    if branch_val[i % NUM_TASKS]:
+      key = scene + "-val-" + task
 
     # summary for tensorboard
     episode_length_input = tf.placeholder("float")
@@ -154,8 +152,8 @@ if __name__ == '__main__':
 
     scene, task = branches[parallel_index % NUM_TASKS]
     key = scene + "-" + task
-    if parallel_index % NUM_TASKS >= NUM_TRAIN_TASK:
-      key += "-val"
+    if branch_val[parallel_index % NUM_TASKS]:
+      key = scene + "-val-" + task
 
     while global_t < MAX_TIME_STEP and not stop_requested:
       diff_global_t = training_thread.process(sess, global_t, summary_writer,

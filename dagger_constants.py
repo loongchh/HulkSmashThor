@@ -59,14 +59,10 @@ VALID_TASK_LIST = {
   'bathroom_02'    : ['26', '69'],
 }
 
-# The task lists above are ignored when the following is specified
-TRAIN_SCENES = ['bathroom_02']
-NUM_TRAIN_TASK = 10
-NUM_VAL_TASK = 1
-NUM_TEST_TASK = 1
 
 NUM_VAL_EPISODES = 20
 VALIDATE = True
+DYNAMIC_VALIDATE = False
 VALIDATE_FREQUENCY = 50000
 SUCCESS_CUTOFF = 500
 MAX_VALID_STEPS = 1000
