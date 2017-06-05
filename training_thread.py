@@ -168,7 +168,7 @@ class A3CTrainingThread(object):
 
       # s_t1 -> s_t
       self.env.update()
-      
+
       if terminal:
         terminal_end = True
         sys.stdout.write("time %d | thread #%d | scene %s | target #%s\n%s %s episode reward = %.3f\n%s %s episode length = %d\n%s %s episode max Q  = %.3f\n" % (global_t, self.thread_index, self.scene_scope, self.task_scope, self.scene_scope, self.task_scope, self.episode_reward, self.scene_scope, self.task_scope, self.episode_length, self.scene_scope, self.task_scope, self.episode_max_q))
