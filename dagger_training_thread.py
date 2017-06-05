@@ -241,7 +241,7 @@ class SmashNetTrainingThread(object):
       self.env.step(action)
 
       is_terminal = self.env.terminal or self.episode_length > 5e3
-      if self.mode is "val" and self.episode_length > 500:
+      if self.mode is "val" and self.episode_length > 1e3:
         is_terminal = True
 
       self.episode_length += 1

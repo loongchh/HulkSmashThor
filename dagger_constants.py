@@ -3,7 +3,7 @@
 LOCAL_T_MAX = 5 # repeat step size
 RMSP_ALPHA = 0.99 # decay parameter for RMSProp
 RMSP_EPSILON = 0.1 # epsilon parameter for RMSProp
-CHECKPOINT_DIR = 'checkpoints-1'
+CHECKPOINT_DIR = 'checkpoints-living_room_08_8'
 LOG_FILE = 'logs'
 INITIAL_ALPHA_LOW = 1e-4    # log_uniform low limit for learning rate
 INITIAL_ALPHA_HIGH = 1e-2   # log_uniform high limit for learning rate
@@ -50,13 +50,13 @@ PARALLEL_SIZE = 20 # parallel thread size
 # }
 
 TRAIN_TASK_LIST = {
-  'bathroom_02'    : ['26']
+    'living_room_08': ['92', '135', '193', '228', '132', '251', '303', '13'],
 }
 VALID_TASK_LIST = {
-  'bathroom_02'    : ['27'],
+    'living_room_08': ['104', '131', '197', '240', '164', '247', '300', '17'],
 }
 TEST_TASK_LIST = {
-  'bathroom_02'    : ['69'],
+    'living_room_08': ['256', '252', '171', '393', '312', '344', '387', '79']
 }
 
 
