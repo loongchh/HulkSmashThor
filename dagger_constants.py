@@ -29,7 +29,7 @@ TASK_TYPE = 'navigation' # no need to change
 
 # DAGGER IMITATION LEARNING SPECIFIC
 INITIAL_DIFFIDENCE_RATE = 0
-PARALLEL_SIZE = 32 # parallel thread size
+PARALLEL_SIZE = 20 # parallel thread size
 # TRAIN_TASK_LIST = {
 #   'bathroom_02'    : ['26', '37', '43', '53'],
 #   'bedroom_04'     : ['134', '264', '320', '384'],
