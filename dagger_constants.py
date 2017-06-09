@@ -3,7 +3,7 @@
 LOCAL_T_MAX = 5  # repeat step size
 RMSP_ALPHA = 0.99  # decay parameter for RMSProp
 RMSP_EPSILON = 0.1  # epsilon parameter for RMSProp
-CHECKPOINT_DIR = 'checkpoints-asym-8'
+CHECKPOINT_DIR = 'checkpoints-sym-8'
 LOG_FILE = 'logs'
 INITIAL_ALPHA_LOW = 1e-4    # log_uniform low limit for learning rate
 INITIAL_ALPHA_HIGH = 1e-2   # log_uniform high limit for learning rate
@@ -24,13 +24,15 @@ SCREEN_WIDTH = 84
 SCREEN_HEIGHT = 84
 HISTORY_LENGTH = 4
 
-NUM_EVAL_EPISODES = 100  # number of episodes for evaluation
+NUM_EVAL_EPISODES = 1  # number of episodes for evaluation
+VERBOSE_EVAL = True
+EVAL_INIT_LOC = 433
 
 TASK_TYPE = 'navigation'  # no need to change
 
 # DAGGER IMITATION LEARNING SPECIFIC
 INITIAL_DIFFIDENCE_RATE = 0
-PARALLEL_SIZE = 20  # parallel thread size
+PARALLEL_SIZE = 32  # parallel thread size
 # TRAIN_TASK_LIST = {
 #   'bathroom_02'    : ['26', '37', '43', '53'],
 #   'bedroom_04'     : ['134', '264', '320', '384'],
@@ -67,4 +69,4 @@ DYNAMIC_VALIDATE = True
 VALIDATE_FREQUENCY = 50000
 SUCCESS_CUTOFF = 500
 MAX_VALID_STEPS = 1000
-ENCOURAGE_SYMMETRY = False
+ENCOURAGE_SYMMETRY = True

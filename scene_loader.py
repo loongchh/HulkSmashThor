@@ -19,7 +19,8 @@ class THORDiscreteEnvironment(object):
     self.scene_name          = config.get('scene_name', 'bedroom_04')
     self.random_start        = config.get('random_start', True)
     self.n_feat_per_locaiton = config.get('n_feat_per_locaiton', 1) # 1 for no sampling
-    self.terminal_state_id   = config.get('terminal_state_id', 0)
+    self.terminal_state_id   = config.get('terminal_state_id', 1)
+    self.initial_state       = config.get('initial_state', None)
 
     self.h5_file_path = config.get('h5_file_path', 'data/%s.h5'%self.scene_name)
     self.h5_file      = h5py.File(self.h5_file_path, 'r')
@@ -51,16 +52,19 @@ class THORDiscreteEnvironment(object):
 
   def reset(self):
     # randomize initial state
-    while True:
-      k = random.randrange(self.n_locations)
-      min_d = np.inf
-      # check if target is reachable
-      for t_state in self.terminal_states:
-        dist = self.shortest_path_distances[k][t_state]
-        min_d = min(min_d, dist)
-      # min_d = 0  if k is a terminal state
-      # min_d = -1 if no terminal state is reachable from k
-      if min_d > 0: break
+    if self.initial_state:
+      k = self.initial_state
+    else:
+      while True:
+        k = random.randrange(self.n_locations)
+        min_d = np.inf
+        # check if target is reachable
+        for t_state in self.terminal_states:
+          dist = self.shortest_path_distances[k][t_state]
+          min_d = min(min_d, dist)
+        # min_d = 0  if k is a terminal state
+        # min_d = -1 if no terminal state is reachable from k
+        if min_d > 0: break
 
     # reset parameters
     self.current_state_id = k
@@ -109,7 +113,7 @@ class THORDiscreteEnvironment(object):
   @property
   def action_size(self):
     # move forward/backward, turn left/right for navigation
-    return ACTION_SIZE 
+    return ACTION_SIZE
 
   @property
   def action_definitions(self):
