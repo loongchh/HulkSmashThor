@@ -16,6 +16,7 @@ from constants import ACTION_SIZE
 from constants import CHECKPOINT_DIR
 from constants import NUM_EVAL_EPISODES
 from constants import VERBOSE
+from constants import USE_LSTM
 
 from constants import TASK_TYPE
 from constants import TASK_LIST
@@ -90,6 +91,8 @@ if __name__ == '__main__':
           ep_reward += env.reward
           ep_t += 1
 
+        if USE_LSTM:
+          self.local_network.reset_state()
         ep_lengths.append(ep_t)
         ep_rewards.append(ep_reward)
         ep_collisions.append(ep_collision)

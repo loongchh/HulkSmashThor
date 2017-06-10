@@ -3,6 +3,8 @@
 import tensorflow as tf
 import threading
 import numpy as np
+import os
+import time
 
 import signal
 import random
@@ -122,7 +124,8 @@ if __name__ == '__main__':
       "learning_rate_input": learning_rate_input
     }
 
-  summary_writer = tf.summary.FileWriter(LOG_FILE, sess.graph)
+  log_file = os.path.join(LOG_FILE, time.strftime("%Y-%m-%d-%H%M%S"))
+  summary_writer = tf.summary.FileWriter(log_file, sess.graph)
 
   # init or load checkpoint with saver
   # if you don't need to be able to resume training, use the next line instead.

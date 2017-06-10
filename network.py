@@ -355,6 +355,8 @@ class ActorCriticLSTMNetwork(ActorCriticNetwork):
             self.W_lstm[key] = tf.get_variable("basic_lstm_cell/weights")
             self.b_lstm[key] = tf.get_variable("basic_lstm_cell/biases")
             self.reset_state()
+
+
   def reset_state(self):
     self.lstm_state_out = tf.contrib.rnn.LSTMStateTuple(np.zeros([1, 512]),
                                                         np.zeros([1, 512]))
