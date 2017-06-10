@@ -92,7 +92,7 @@ if __name__ == '__main__':
           env.update()
 
           terminal = env.terminal
-          if ep_t == 5e3: break
+          if ep_t == 10000: break
           if env.collided: ep_collision += 1
           ep_reward += env.reward
           ep_t += 1
