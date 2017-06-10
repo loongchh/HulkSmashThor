@@ -159,10 +159,10 @@ if __name__ == '__main__':
                                               summary_op[key], summary_placeholders[key])
       global_t += diff_global_t
       # periodically save checkpoints to disk
-      if (parallel_index == 0 and global_t - last_global_t >= CHECKPOINT_FREQ) or global_t == MAX_TIME_STEP:
+      if parallel_index == 0 and (global_t - last_global_t >= CHECKPOINT_FREQ or global_t == MAX_TIME_STEP):
         print('Save checkpoint at timestamp %d' % global_t)
         saver.save(sess, CHECKPOINT_DIR + '/' + 'checkpoint', global_step = global_t)
-        last_global_t = global_t - global_t % CHECKPOINT_FREQ
+        last_global_t = CHECKPOINT_FREQ * (global_t // CHECKPOINT_FREQ)
 
   def signal_handler(signal, frame):
     global stop_requested
