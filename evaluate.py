@@ -23,7 +23,7 @@ from constants import TASK_LIST
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
-  parser.add_argument('--time', help='Name of checkpoint file.',
+  parser.add_argument('-t', '--time', help='Name of checkpoint file.',
                       default=None)
   args = parser.parse_args()
 

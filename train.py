@@ -23,6 +23,7 @@ from constants import INITIAL_ALPHA_HIGH
 from constants import INITIAL_ALPHA_LOG_RATE
 from constants import MAX_TIME_STEP
 from constants import CHECKPOINT_DIR
+from constants import CHECKPOINT_FREQ
 from constants import LOG_FILE
 from constants import RMSP_EPSILON
 from constants import RMSP_ALPHA
@@ -153,15 +154,15 @@ if __name__ == '__main__':
     scene, task = branches[parallel_index % NUM_TASKS]
     key = scene + "-" + task
 
-    while global_t < MAX_TIME_STEP and not stop_requested:
+    while global_t <= MAX_TIME_STEP and not stop_requested:
       diff_global_t = training_thread.process(sess, global_t, summary_writer,
                                               summary_op[key], summary_placeholders[key])
       global_t += diff_global_t
       # periodically save checkpoints to disk
-      if parallel_index == 0 and global_t - last_global_t > 1000000:
+      if (parallel_index == 0 and global_t - last_global_t >= CHECKPOINT_FREQ) or global_t == MAX_TIME_STEP:
         print('Save checkpoint at timestamp %d' % global_t)
         saver.save(sess, CHECKPOINT_DIR + '/' + 'checkpoint', global_step = global_t)
-        last_global_t = global_t
+        last_global_t = global_t - global_t % CHECKPOINT_FREQ
 
   def signal_handler(signal, frame):
     global stop_requested
