@@ -3,7 +3,8 @@
 LOCAL_T_MAX = 5  # repeat step size
 RMSP_ALPHA = 0.99  # decay parameter for RMSProp
 RMSP_EPSILON = 0.1  # epsilon parameter for RMSProp
-CHECKPOINT_DIR = 'checkpoints-sym-8'
+
+CHECKPOINT_DIR = 'checkpoints-baseline-asym-8'
 LOG_FILE = 'logs'
 INITIAL_ALPHA_LOW = 1e-4    # log_uniform low limit for learning rate
 INITIAL_ALPHA_HIGH = 1e-2   # log_uniform high limit for learning rate
@@ -53,10 +54,12 @@ PARALLEL_SIZE = 32  # parallel thread size
 # }
 
 TRAIN_TASK_LIST = {
-    'living_room_08': ['92', '135', '193', '228', '132', '251', '303', '13'],
+    'bathroom_02': ['26', '37', '43', '53', '16', '28', '32', '41']
+    # 'living_room_08': ['92', '135', '193', '228', '132', '251', '303', '13'],
 }
 VALID_TASK_LIST = {
-    'living_room_08': ['104', '131', '197', '240', '164', '247', '300', '17'],
+    'bathroom_02': ['27', '38', '40', '54', '32', '48', '52', '45']
+    # 'living_room_08': ['104', '131', '197', '240', '164', '247', '300', '17'],
 }
 TEST_TASK_LIST = {
     'living_room_08': ['256', '252', '171', '393', '312', '344', '387', '79'],
@@ -69,4 +72,4 @@ DYNAMIC_VALIDATE = True
 VALIDATE_FREQUENCY = 50000
 SUCCESS_CUTOFF = 500
 MAX_VALID_STEPS = 1000
-ENCOURAGE_SYMMETRY = True
+ENCOURAGE_SYMMETRY = False

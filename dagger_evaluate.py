@@ -74,7 +74,8 @@ if __name__ == '__main__':
       for i_episode in range_func(NUM_EVAL_EPISODES):
         env.reset()
         if VERBOSE_EVAL:
-          print("Initial location: {:d}".format(env.current_state_id))
+          print("Initial location: {:d}".format(EVAL_INIT_LOC))
+          print("Target location: {:s}".format(task_scope))
         oracle_lengths.append(env.shortest_path_distances[env.current_state_id][env.terminal_state_id])
         terminal = False
         ep_length = 0
