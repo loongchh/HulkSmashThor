@@ -6,7 +6,7 @@ import random
 import sys
 import argparse
 
-from network import ActorCriticFFNetwork
+from network import ActorCriticFFNetwork, ActorCriticLSTMNetwork
 from training_thread import A3CTrainingThread
 from scene_loader import THORDiscreteEnvironment as Environment
 
@@ -32,10 +32,16 @@ if __name__ == '__main__':
   list_of_tasks = TASK_LIST
   scene_scopes = list_of_tasks.keys()
 
-  global_network = ActorCriticFFNetwork(action_size=ACTION_SIZE,
-                                        device=device,
-                                        network_scope=network_scope,
-                                        scene_scopes=scene_scopes)
+  if USE_LSTM:
+    global_network = ActorCriticLSTMNetwork(action_size=ACTION_SIZE,
+                                          device=device,
+                                          network_scope=network_scope,
+                                          scene_scopes=scene_scopes)
+  else:
+    global_network = ActorCriticFFNetwork(action_size=ACTION_SIZE,
+                                          device=device,
+                                          network_scope=network_scope,
+                                          scene_scopes=scene_scopes)
 
   sess = tf.Session()
   init = tf.global_variables_initializer()
@@ -86,13 +92,13 @@ if __name__ == '__main__':
           env.update()
 
           terminal = env.terminal
-          if ep_t == 10000: break
+          if ep_t == 5e3: break
           if env.collided: ep_collision += 1
           ep_reward += env.reward
           ep_t += 1
 
         if USE_LSTM:
-          self.local_network.reset_state()
+          global_network.reset_state()
         ep_lengths.append(ep_t)
         ep_rewards.append(ep_reward)
         ep_collisions.append(ep_collision)
