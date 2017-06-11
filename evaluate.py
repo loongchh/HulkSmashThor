@@ -19,7 +19,7 @@ from constants import VERBOSE
 from constants import USE_LSTM
 
 from constants import TASK_TYPE
-from constants import TASK_LIST
+from constants import TEST_TASK_LIST
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
@@ -29,7 +29,7 @@ if __name__ == '__main__':
 
   device = "/cpu:0" # use CPU for display tool
   network_scope = TASK_TYPE
-  list_of_tasks = TASK_LIST
+  list_of_tasks = TEST_TASK_LIST
   scene_scopes = list_of_tasks.keys()
 
   if USE_LSTM:
