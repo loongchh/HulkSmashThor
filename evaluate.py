@@ -17,6 +17,7 @@ from constants import CHECKPOINT_DIR
 from constants import NUM_EVAL_EPISODES
 from constants import VERBOSE
 from constants import USE_LSTM
+from constants import EVAL_INIT_LOC
 
 from constants import TASK_TYPE
 from constants import TEST_TASK_LIST
@@ -68,7 +69,8 @@ if __name__ == '__main__':
 
       env = Environment({
         'scene_name': scene_scope,
-        'terminal_state_id': int(task_scope)
+        'terminal_state_id': int(task_scope),
+        'initial_state': EVAL_INIT_LOC,
       })
       ep_rewards = []
       ep_lengths = []
@@ -83,11 +85,13 @@ if __name__ == '__main__':
         ep_reward = 0
         ep_collision = 0
         ep_t = 0
+        ep_action = []
 
         while not terminal:
 
           pi_values = global_network.run_policy(sess, env.s_t, env.target, scopes)
           action = sample_action(pi_values)
+          ep_action.append(action)
           env.step(action)
           env.update()
 
@@ -102,7 +106,9 @@ if __name__ == '__main__':
         ep_lengths.append(ep_t)
         ep_rewards.append(ep_reward)
         ep_collisions.append(ep_collision)
-        if VERBOSE: print("episode #{} ends after {} steps".format(i_episode, ep_t))
+        if VERBOSE:
+          print("episode #{} ends after {} steps".format(i_episode, ep_t))
+          print(ep_action)
 
       print('evaluation: %s %s' % (scene_scope, task_scope))
       print('mean episode reward: %.2f' % np.mean(ep_rewards))

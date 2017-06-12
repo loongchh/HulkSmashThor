@@ -20,10 +20,10 @@ class ActorCriticNetwork(object):
 
     with tf.device(self._device):
       # taken action (input for policy)
-      self.a = tf.placeholder("float", [None, self._action_size], name="a_placeholder")
-
+      self.a = tf.placeholder("float", [None, self._action_size])
+    
       # temporary difference (R-V) (input for policy)
-      self.td = tf.placeholder("float", [None], name="tf_placeholder")
+      self.td = tf.placeholder("float", [None])
 
       # avoid NaN with clipping when value in pi becomes zero
       log_pi = tf.log(tf.clip_by_value(self.pi[scope_key], 1e-20, 1.0))
@@ -35,7 +35,7 @@ class ActorCriticNetwork(object):
       policy_loss = - tf.reduce_sum(tf.reduce_sum(tf.multiply(log_pi, self.a), axis=1) * self.td + entropy * entropy_beta)
 
       # R (input for value)
-      self.r = tf.placeholder("float", [None], name="r_placeholder")
+      self.r = tf.placeholder("float", [None])
 
       # value loss (output)
       # learning rate for critic is half of actor's
@@ -149,10 +149,10 @@ class ActorCriticFFNetwork(ActorCriticNetwork):
     with tf.device(self._device):
 
       # state (input)
-      self.s = tf.placeholder("float", [None, 2048, 4], name="s_placeholder")
+      self.s = tf.placeholder("float", [None, 2048, 4])
 
       # target (input)
-      self.t = tf.placeholder("float", [None, 2048, 4], name="t_placeholder")
+      self.t = tf.placeholder("float", [None, 2048, 4])
 
       with tf.variable_scope(network_scope):
         # network key
@@ -229,6 +229,7 @@ class ActorCriticFFNetwork(ActorCriticNetwork):
     for v in var_list:
       vs.extend(v.values())
     return vs
+  
 
 # Actor-Critic LSTM Network
 class ActorCriticLSTMNetwork(ActorCriticNetwork):
