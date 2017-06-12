@@ -4,10 +4,10 @@
 
 ## Introduction
 
-This repository provides a TensorFlow implementation of 2 extensions to the the [deep Siamese target-driven actor-critic model](http://web.stanford.edu/~yukez/icra2017.html) for indoor scenes navigation, first proposed by [Yuke Zhu](http://web.stanford.edu/~yukez/).
+This repository provides TensorFlow implementation of 2 extensions to the the [deep Siamese target-driven actor-critic model](http://web.stanford.edu/~yukez/icra2017.html) for indoor scenes navigation, first proposed by [Yuke Zhu](http://web.stanford.edu/~yukez/).
 
 ## Setup
-This code is implemented in [Tensorflow API r1.0](https://www.tensorflow.org/api_docs/). This code has been tested with Python 3.6. Other dependencies can be install with [pip](https://pypi.python.org/pypi/pip): ```pip install -r requirements.txt```.
+This code was implemented in [Tensorflow r1.0](https://www.tensorflow.org/api_docs/). This code has been tested with Python 3.6. Other dependencies can be install with [pip](https://pypi.python.org/pypi/pip): `pip install -r requirements.txt`.
 
 ## Training and Evaluation
 We include implementation for two separate models: A3C Target-driven with LSTM memory extension, and DAgger imitation learning-based model. The implementation of the former is under [train.py](train.py) and the class ActorCriticLSTMNetwork in [network.py](network.py). The implementation of the latter is located in [dagger_train.py](dagger_train.py) and [dagger_network.py](dagger_network.py).
