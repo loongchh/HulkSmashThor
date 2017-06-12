@@ -4,13 +4,7 @@
 
 ## Introduction
 
-This repository provides a TensorFlow implementation an extension to the the deep Siamese actor-critic model for indoor scene navigation introduced in the following paper:
-
-**[Target-driven Visual Navigation in Indoor Scenes using Deep Reinforcement Learning](http://web.stanford.edu/~yukez/papers/icra2017.pdf)**
-<br>
-[Yuke Zhu](http://web.stanford.edu/~yukez/), Roozbeh Mottaghi, Eric Kolve, Joseph J. Lim, Abhinav Gupta, Li Fei-Fei, and Ali Farhadi
-<br>
-[ICRA 2017, Singapore](http://www.icra2017.org/)
+This repository provides a TensorFlow implementation of 2 extensions to the the [deep Siamese target-driven actor-critic model](http://web.stanford.edu/~yukez/icra2017.html) for indoor scenes navigation, first proposed by [Yuke Zhu](http://web.stanford.edu/~yukez/).
 
 ## Setup
 This code is implemented in [Tensorflow API r1.0](https://www.tensorflow.org/api_docs/). This code has been tested with Python 3.6. Other dependencies can be install with [pip](https://pypi.python.org/pypi/pip): ```pip install -r requirements.txt```.
@@ -29,9 +23,16 @@ python dagger_train.py
 ```
 
 ## Acknowledgements
-We would like to acknowledge the following references that have offered great help for me to implement the model.
+We would like to acknowledge the following references that have offered great help in the implementation.
 * [miyosuda's async_deep_reinforce repo](https://github.com/miyosuda/async_deep_reinforce)
 * yukezhu's implementation of the Target-driven model (currently unavailable online)
+
+## Citation
+**[Target-driven Visual Navigation in Indoor Scenes using Deep Reinforcement Learning](http://web.stanford.edu/~yukez/papers/icra2017.pdf)**
+<br>
+[Yuke Zhu](http://web.stanford.edu/~yukez/), Roozbeh Mottaghi, Eric Kolve, Joseph J. Lim, Abhinav Gupta, Li Fei-Fei, and Ali Farhadi
+<br>
+[ICRA 2017, Singapore](http://www.icra2017.org/)
 
 ## License
 MIT
